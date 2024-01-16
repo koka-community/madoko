@@ -9,21 +9,20 @@
 // Parse math dimension file
 module mathParse
 
-import std/string
-import std/regex
-import std/dict
+import std/text/regex
+import std/data/dict
 import common
 import options
 
 // parse a dimension file written by latex snippets
-public function parseMathDim( txt : string, opts : mathoptions  ) : (dict<mathinfo>,string,string) {
+pub fun parseMathDim( txt : string, opts : mathoptions  ) : (dict<mathinfo>,string,string) {
   val mi = mdict()
   val paths = mdict()
   var svgsize    : int := 0
   var svgreduced : int := 0
   val baseline  = opts.baseline.double / 100.0
 
-  txt.findAll(rxDimLine).foreach fun(cap) {    
+  txt.findAll(rxDimLine).foreach fn(cap) {    
     val page      = cap.groups[2].parseInt.maybe(0,id)
     val ptwidth   = dimension(cap.groups[4],cap.groups[5])
     val ptheight  = dimension(cap.groups[6],cap.groups[7])
@@ -47,7 +46,7 @@ public function parseMathDim( txt : string, opts : mathoptions  ) : (dict<mathin
     val embed = if (!opts.svgShare || mime!="image/svg+xml") then imageData else {
       svgsize := svgsize + size
       var renames := []
-      val svg = imageData.replaceAll(rxSvgPath, fun(pcap) {
+      val svg = imageData.replaceAll(rxSvgPath, fn(pcap) {
         val pathid = pcap.groups[1]
         val ps     = paths[pathid].maybe([],id)
         val path   = pcap.matched
@@ -64,7 +63,7 @@ public function parseMathDim( txt : string, opts : mathoptions  ) : (dict<mathin
                           i
                         }
                       }
-        if (idx > 0) renames := Cons( (pathid, pathid + "-" + idx.show), renames )
+        if (idx > 0) then renames := Cons( (pathid, pathid + "-" + idx.show), renames )
         ""        
       })
       svg.renameIds(renames).replaceAll("<defs></defs>","")
@@ -87,50 +86,50 @@ public function parseMathDim( txt : string, opts : mathoptions  ) : (dict<mathin
 
   return (mi.freeze(), svgdefs, msg)
 }   
-val rxMimePre = regex(@"^image/(\w+)")
-val rxSvgPath = regex(@"<path\b(?:[^/>]|/(?![^>]))*?\bid='([^']+)'(?:[^/>]|/(?![^>]))*?/>")
+val rxMimePre = regex(r"^image/(\w+)")
+val rxSvgPath = regex(r"<path\b(?:[^/>]|/(?![^>]))*?\bid='([^']+)'(?:[^/>]|/(?![^>]))*?/>")
 
-public val rxDimLine = regex(@"^((\d+) *, *([a-zA-Z0-9]+) *" + 
+pub val rxDimLine = regex(r"^((\d+) *, *([a-zA-Z0-9]+) *" + 
                           rxDim + rxDim + rxDim + ")" +
                            "(?:" + rxDim + rxDim + rxDim + rxNum + rxMime + rxEmbed + ")?$", multiLine=True)
-val rxDim = @", *(\d+)(?:\.(\d+))? *pt\b *"
-val rxEmbed = @"(?:, *(data:.*))?"
-val rxNum   = @", *(\d+) *"
-val rxMime  = @", *(image/[\w\+]+) *"
+val rxDim = r", *(\d+)(?:\.(\d+))? *pt\b *"
+val rxEmbed = r"(?:, *(data:.*))?"
+val rxNum   = r", *(\d+) *"
+val rxMime  = r", *(image/[\w\+]+) *"
 
-public function dimension( whole : string, fraction : string ) : double {
+pub fun dimension( whole : string, fraction : string ) : double {
   val w = whole.parseInt.maybe(0,id).double
   val f = (fraction + "00000").substr(0,5).parseInt.maybe(0,id).double / 100000.0
   return (w+f)
 }
 
-public function containsSnippet( txt : string ) : bool {
+pub fun containsSnippet( txt : string ) : bool {
   txt.contains(rxDigest)
 }
 
-public val rxDigest = regex(@"\\begin{md(?:Inline|Display)Snippet}[\[\{]([a-fA-F0-9]{32})[\}\]]")
+pub val rxDigest = regex(r"\\begin{md(?:Inline|Display)Snippet}[\[\{]([a-fA-F0-9]{32})[\}\]]")
 
 
 // return all tex content outside snippets and line comments
-public function unsnippet( txt : string, which : string ) : string {
+pub fun unsnippet( txt : string, which : string ) : string {
   val res = txt.replaceAll( rxSnippet, "" ).replaceAll( rxComment, "" ).replaceAll(rxLines, "\n")
   //trace("**** unsnippet pre " + which + " ****\n" + txt + "\n*******")
   //trace("**** unsnippet " + which + " ****\n" + res.replaceAll("\n","-") + "\n*******")
   res
 }
 
-val rxSnippet = regex( @"\\begin{md(?:Inline|Display)Snippet}[\s\S]*?\\end{md(?:Inline|Display)Snippet}" )
-val rxComment = regex( @"\r?\n[ \t]*%[^\r\n]*" )
-val rxLines   = regex( @"(?:\r?\n)+")
+val rxSnippet = regex( r"\\begin{md(?:Inline|Display)Snippet}[\s\S]*?\\end{md(?:Inline|Display)Snippet}" )
+val rxComment = regex( r"\r?\n[ \t]*%[^\r\n]*" )
+val rxLines   = regex( r"(?:\r?\n)+")
 
-public function showSize( size : int ) : string {
+pub fun showSize( size : int ) : string {
   val kb = 1024
   if (size < 10*kb) 
    then (size.double / kb.double).showFixed(1).align(4) + " kb"
    else ((size + kb - 1)/kb).show.align(4) + " kb"
 }
 
-function findIdx( xs : list<string>, id : string, acc : int = 0 ) : maybe<int> {
+fun findIdx( xs : list<string>, id : string, acc : int = 0 ) : maybe<int> {
   match(xs) {
     Nil -> Nothing
     Cons(x,xx) -> {
@@ -139,9 +138,9 @@ function findIdx( xs : list<string>, id : string, acc : int = 0 ) : maybe<int> {
   }
 }
 
-function renamePaths( pid: (string,list<string>) ) : list<string> {
+fun renamePaths( pid: (string,list<string>) ) : list<string> {
   val pathid = pid.fst
-  pid.snd.mapIndexed fun(idx,path) {
+  pid.snd.mapIndexed fn(idx,path) {
     if (idx==0) then path else {
       val newid = pathid + "-" + idx.show
       // trace("do path rename: " + pathid + " -> " + newid)
@@ -150,10 +149,10 @@ function renamePaths( pid: (string,list<string>) ) : list<string> {
   }
 }
 
-function renameIds( svg : string, renames : list<(string,string)> ) {
+fun renameIds( svg : string, renames : list<(string,string)> ) {
   // rename path id's
   val d = renames.dict
-  svg.replaceAll(rxSvgId, fun(cap) {
+  svg.replaceAll(rxSvgId, fn(cap) {
     val id = cap.groups[2]
     match(d[id]) {
       Nothing     -> cap.matched
@@ -165,4 +164,4 @@ function renameIds( svg : string, renames : list<(string,string)> ) {
   })
 }
 
-val rxSvgId = regex(@"\b(id=['""]|xlink:href=['""]#|url\()([\w\-]+)(?=['""\)])") // specific to dvisvgm
+val rxSvgId = regex(r#"\b(id=['"]|xlink:href=['"]#|url\()([\w\-]+)(?=['"\)])"#) // specific to dvisvgm

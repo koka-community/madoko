@@ -7,28 +7,28 @@
 ---------------------------------------------------------------------------*/
 module process
 
-import std/path
-import std/dict
+import std/os/path
+import std/data/dict
 
-external include {
+extern import {
   cs file "process-inline.cs"
   js file "process-inline.js"
 }
 
-external import {
-  js "child_process"
+extern import {
+  js child "child_process"
 }
 
 // quote file and command names for shell execution
-public function quote( s : string ) : string {
+pub fun quote( s : string ) : string {
   "\"" + s + "\""
 }
 
-public function system( cmd : string, callback : (int,string,string) -> <io|e> (), timeout : int = 0, cwd : string = "", env : list<(string,string)> = []) : <io|e> () {
+pub fun system( cmd : string, callback : (int,string,string) -> <io|e> (), timeout : int = 0, cwd : string = "", env : list<(string,string)> = []) : <io|e> () {
   systemx(cmd,callback,timeout,cwd,if (env.isNil) then Nothing else Just(dict(env)))
 }
 
-external systemx( cmd : string, callback : (int,string,string) -> <io|e> (), timeout : int = 0, cwd : string = "", env : maybe<dict<string>> = Nothing ) : <io|e> () {
+extern systemx( cmd : string, callback : (int,string,string) -> <io|e> (), timeout : int = 0, cwd : string = "", env : maybe<dict<string>> = Nothing ) : <io|e> () {
   cs inline "ShellCommand.system(#1,#2,#3,#4)" // TODO: environment
   js inline "system_exec(#1,#2,#3,#4,#5)"
 }

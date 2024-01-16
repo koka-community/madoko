@@ -13,11 +13,10 @@
 // recognized in order to allow author names with correct accent characters.
 module texParserBase
 
-import std/dict
-import std/string
-import std/regex
-import std/crypto
-import std/path
+import std/data/dict
+import std/text/regex
+// import std/crypto
+import std/os/path
 import common
 import entity
 import texCommon
@@ -25,33 +24,33 @@ import texCommon
 /* --------------------------------------
  The context for latex elements 
 ---------------------------------------- */
-public alias texRule = rule<string,texContext>
+pub alias texRule = rule<string,texContext>
 
-public rectype texContext {
+pub type texContext {
   // The parse context for latex elements. 
   TexContext( grammar   : grammar<string,texContext>, 
               citestyle : citestyle = citeAuto, 
               bststyle  : string,
               ignore    : bool = True,
               name      : string = "",
-              texparse  : (context:texContext, input:string) -> string )                 
+              texparse  : (contxt:texContext, input:string) -> string )                 
 }
 
 
-public function parse( txt : string, context : texContext ) : string
+pub fun parse( txt : string, contxt : texContext ) : string
 {
-  (context.texparse)(context,txt)
+  (contxt.texparse)(contxt,txt)
 }
 
 
-public val special = @"\\{}~*_\[\]#\$`%\n\-";
+pub val special = r"\\{}~*_\[\]#\$`%\n\-";
 
-public val texargg = @"(?:\{" + texargs + @"\})"
+pub val texargg = r"(?:\{" + texargs + r"\})"
 
-public val overlay = @"(?:<([^>\n]*)>)"
+pub val overlay = r"(?:<([^>\n]*)>)"
 
 /* don't include these as packages */
-public val stdPackages = ["iftex","etoolbox","xkeyval","xcolor","mdframed","graphicx","tablefootnote",
+pub val stdPackages = ["iftex","etoolbox","xkeyval","xcolor","mdframed","graphicx","tablefootnote",
                    "css","array","longtable","enumitem","booktabs","hyperref","pdfcomment","wrapfig","madoko",
                    "amsmath","amsfonts","amssymb","stmaryrd","textcomp","pifont",
                    // the following should really not be included as they clash with the standard ones
@@ -60,13 +59,13 @@ public val stdPackages = ["iftex","etoolbox","xkeyval","xcolor","mdframed","grap
                    "color",
                   ].join(";")
 
-public function unbrace(s : string ) : string {
-  if (s.startsWith("{") &&  (s.indexOf("}") == s.length-1)) 
-   then s.substr(1,s.length-2) else s
+pub fun unbrace(s : string ) : string {
+  if (s.startsWith("{") &&  (s.indexOf("}") == s.length - 1)) 
+   then s.substr(1,s.length - 2) else s
 }
 
 
-public function quote( s : string ) : string {
+pub fun quote( s : string ) : string {
   val hasdquot = s.contains("\"")
   val hassquot = s.contains("\'")
   if (s.contains("\"")) then {
@@ -77,37 +76,37 @@ public function quote( s : string ) : string {
   else "\"" + s + "\""
 }
 
-public function indent4( txt : string ) : string {
-  txt.split("\n").map(fun(s) { "    " + s }).join("\n")
+pub fun indent4( txt : string ) : string {
+  txt.split("\n").map(fn(s) { "    " + s }).join("\n")
 }
 
 
-public val rxNl = regex(@"\r?\n")
+pub val rxNl = regex(r"\r?\n")
 
-public function makeAttr( key : string, value : string ) {
+pub fun makeAttr( key : string, value : string ) {
   if (value=="")
    then ""
    else key + ":" + value.replaceAll(rxNl,"&nl;").quote
 }
 
-public function joinAttrs( keyvals : list<string> ) {
+pub fun joinAttrs( keyvals : list<string> ) {
   val kvs = keyvals.remove(isEmpty).join(" ; ")
   if (kvs=="") then "" else "{ " + kvs + " }"
 }
 
-public function singleAttr( key : string, value : string ) : string {
+pub fun singleAttr( key : string, value : string ) : string {
   [makeAttr(key,value)].joinAttrs
 }
 
-public function trimx( s : string, n : int ) : string {
+pub fun trimx( s : string, n : int ) : string {
   s.substr(n,s.length-(2*n))
 }
 
-public function trimNL( s : string ) : string {
+pub fun trimNL( s : string ) : string {
   s.replaceAll(rxNL0,"")
 }
 
-val rxNL0 = regex(@"^[ \t]*\r?\n|\r?\n$")
+val rxNL0 = regex(r"^[ \t]*\r?\n|\r?\n$")
 
 
 /* --------------------------------------
@@ -117,93 +116,93 @@ val rxNL0 = regex(@"^[ \t]*\r?\n|\r?\n$")
 struct mRule(
   regex: regex,
   keys  : list<string>,
-  values: (cap:matched, context: texContext ) -> list<string>,
+  values: (cap:matched, contxt: texContext ) -> list<string>,
   replacer: (cap:matched) -> string
 )
 
 
 val metadataGrammar = [
-  MRule(regex(@"% *\\"), [], metaNone, metaAddSpace ),
-  MRule(regex(@"\\usepackage\b\s*" + optarg + @"?\s*" + texarg), ["Package"], metaOptionValue, metaEmpty ),
-  MRule(regex(@"\\title\b\s*" + texargg), ["Title"], metaTexValue, metaEmpty ),
-  MRule(regex(@"\\subtitle\b\s*" + texargg), ["Sub Title"], metaTexValue, metaEmpty ),
-  MRule(regex(@"\\date\b\s*" + texargg), ["Title Note"], metaTexValue, metaEmpty ),
-  MRule(regex(@"\\bibliographystyle\b\s*" + texargg), ["Bib Style"], metaValueBibStyle, metaEmpty ),  
-  MRule(regex(@"\\bibliography\b\s*" + texargg), ["Bibliography"], metaValueBib, metaKeep ),
-  MRule(regex(@"\\authorinfo\b\s*" + texargg + @"\s*" + texargg + @"\s*" + texargg), ["Author","Address","Email"], metaTexValue3, metaEmpty ),
-  MRule(regex(@"\\(?:IEEEauthorblockN)\b\s*" + texargg), ["Author"], metaTexValue, metaEmpty ),
-  MRule(regex(@"\\(?:IEEEauthorblockA)\b\s*" + texargg), ["Address"], metaTexValue, metaEmpty ),
-  MRule(regex(@"\\(?:author)\b\s*" + texargg), ["Author"], metaTexValue, metaEmpty ),
-  MRule(regex(@"\\(?:address)\b\s*" + texargg), ["Address"], metaTexValue, metaEmpty ),
-  MRule(regex(@"\\email\b\s*" + texargg), ["Email"], metaTexValue, metaEmpty ),
-  MRule(regex(@"\\(?:institute|affiliation|affaddr)\b\s*" + texargg), ["Affiliation"], metaTexValue, metaEmpty ),
-  MRule(regex(@"\\authorrunning\b\s*" + texargg), ["Author Running"], metaTexValue, metaEmpty ),
-  MRule(regex(@"\\titlerunning\b\s*" + texargg), ["Title Running"], metaTexValue, metaEmpty ),
+  MRule(regex(r"% *\\"), [], metaNone, metaAddSpace ),
+  MRule(regex(r"\\usepackage\b\s*" + optarg + r"?\s*" + texarg), ["Package"], metaOptionValue, metaEmpty ),
+  MRule(regex(r"\\title\b\s*" + texargg), ["Title"], metaTexValue, metaEmpty ),
+  MRule(regex(r"\\subtitle\b\s*" + texargg), ["Sub Title"], metaTexValue, metaEmpty ),
+  MRule(regex(r"\\date\b\s*" + texargg), ["Title Note"], metaTexValue, metaEmpty ),
+  MRule(regex(r"\\bibliographystyle\b\s*" + texargg), ["Bib Style"], metaValueBibStyle, metaEmpty ),  
+  MRule(regex(r"\\bibliography\b\s*" + texargg), ["Bibliography"], metaValueBib, metaKeep ),
+  MRule(regex(r"\\authorinfo\b\s*" + texargg + r"\s*" + texargg + r"\s*" + texargg), ["Author","Address","Email"], metaTexValue3, metaEmpty ),
+  MRule(regex(r"\\(?:IEEEauthorblockN)\b\s*" + texargg), ["Author"], metaTexValue, metaEmpty ),
+  MRule(regex(r"\\(?:IEEEauthorblockA)\b\s*" + texargg), ["Address"], metaTexValue, metaEmpty ),
+  MRule(regex(r"\\(?:author)\b\s*" + texargg), ["Author"], metaTexValue, metaEmpty ),
+  MRule(regex(r"\\(?:address)\b\s*" + texargg), ["Address"], metaTexValue, metaEmpty ),
+  MRule(regex(r"\\email\b\s*" + texargg), ["Email"], metaTexValue, metaEmpty ),
+  MRule(regex(r"\\(?:institute|affiliation|affaddr)\b\s*" + texargg), ["Affiliation"], metaTexValue, metaEmpty ),
+  MRule(regex(r"\\authorrunning\b\s*" + texargg), ["Author Running"], metaTexValue, metaEmpty ),
+  MRule(regex(r"\\titlerunning\b\s*" + texargg), ["Title Running"], metaTexValue, metaEmpty ),
 ]
 
 
-function metaEmpty( cap : matched ) : string {
+fun metaEmpty( cap : matched ) : string {
   " " 
 }
 
-function metaKeep( cap : matched ) : string {
+fun metaKeep( cap : matched ) : string {
   cap.matched
 }
 
-function metaAddSpace( cap : matched ) : string {
+fun metaAddSpace( cap : matched ) : string {
   cap.matched + " "
 }
 
-function metaNone( _cap : matched, _context ) : list<string> {
+fun metaNone( _cap : matched, _context ) : list<string> {
   []
 }
 
 
-function metaValue( cap : matched, _context ) : list<string> {
+fun metaValue( cap : matched, _context ) : list<string> {
   [cap.groups[1].unbrace]
 }
 
-function metaValueBibStyle( cap : matched, _context ) : list<string> {
+fun metaValueBibStyle( cap : matched, _context ) : list<string> {
   val style = cap.groups[1].unbrace.trim
   [(if (style=="plain") then "plainnat" else style)]
 }
 
-function metaValueBib( cap : matched, _context ) : list<string> {
+fun metaValueBib( cap : matched, _context ) : list<string> {
   val bibs = cap.groups[1].unbrace.trim.split(",")
   [bibs.join(";")]
 }
 
 
 
-function metaTexValue( cap : matched, context ) : list<string> {
-  [cap.groups[1].parse(context)]
+fun metaTexValue( cap : matched, contxt ) : list<string> {
+  [cap.groups[1].parse(contxt)]
 }
 
-function metaTexValue3( cap : matched, context ) : list<string> {
-  list(1,3).map(fun(i) { cap.groups[i].parse(context) })
+fun metaTexValue3( cap : matched, contxt ) : list<string> {
+  list(1,3).map(fn(i) { cap.groups[i].parse(contxt) })
 }
 
-function metaOptionValue( cap : matched, _context ) : list<string> {
+fun metaOptionValue( cap : matched, _context ) : list<string> {
   val pkg = cap.groups[2].unbrace.trim
   if (stdPackages.contains(pkg)) then return []
   [(if (cap.groups[1].isEmpty) then "" else "[" + cap.groups[1] + "]") + cap.groups[2].unbrace.trim]
 }
 
 
-function texMeta( key, value ) {
+fun texMeta( key, value ) {
   val rvalue = value.unbrace.replaceAll(rxMetaNL, "\n    ").trim
   if (rvalue=="") 
    then ""
    else key.unbrace.fill(12) + ": " + rvalue
 }
-val rxMetaNL = regex(@"\r?\n(?:[ ]{1,4}|\t)?")
+val rxMetaNL = regex(r"\r?\n(?:[ ]{1,4}|\t)?")
 
-function removeSections( txt : string ) : string {
+fun removeSections( txt : string ) : string {
   txt.replaceAll(rxSection,"")
 }
-val rxSection = regex(@"\\(sub)?section\b\*?\s*" + optarg + @"?" + texarg + @"\s*")
+val rxSection = regex(r"\\(sub)?section\b\*?\s*" + optarg + r"?" + texarg + r"\s*")
 
-public function texDocClass( cap : matched, context : texContext ) : string {
+pub fun texDocClass( cap : matched, contxt : texContext ) : string {
   val docClass = cap.groups[2].unbrace.trim
   val comment  = [ "<!-- LaTeX conversion",
                    "  Drag&Drop further .tex/.bib/.cls/.sty/.bst or image files in the editor window",
@@ -212,12 +211,12 @@ public function texDocClass( cap : matched, context : texContext ) : string {
                  ].join("\n")
   val mdata0 = if (docClass=="beamer") 
                 then ["[INCLUDE=presentation]","Reveal Theme: sky"] 
-                else zipWith(["Doc Class"], metaOptionValue(cap,context), texMeta)
-  val (mdata1,content0) = extractMeta( cap.groups[3], context, mdata0 )
+                else zipWith(["Doc Class"], metaOptionValue(cap,contxt), texMeta)
+  val (mdata1,content0) = extractMeta( cap.groups[3], contxt, mdata0 )
   val mdata2 = mdata1 + [if (docClass == "book") then "" else "Heading Base: 2","Logo        : True"]
   val content = if (docClass=="beamer") then content0.removeSections else content0
   val (body,mdata) = match(content.find(rxDocument)) {
-    Nothing    -> (content.parse(context), mdata2)
+    Nothing    -> (content.parse(contxt), mdata2)
     Just(ccap) -> {
       val header = ccap.groups[1].trim
       val hdata = if (header.isEmpty) then []
@@ -228,18 +227,18 @@ public function texDocClass( cap : matched, context : texContext ) : string {
                           header.trim.indent4].join("\n")] // 
                        //"\n<!-- LaTeX definitions; use ~ MathDefs for commands needed for mathematics -->" +
                        //"\n~ TexRaw\n" + header + "\n~\n\n" 
-      (ccap.groups[2].parse(context), [comment] + mdata2 + hdata)
+      (ccap.groups[2].parse(contxt), [comment] + mdata2 + hdata)
     }
   }
   mdata.join("\n") + "\n\n" + body
 }
-val rxDocument = regex(@"^([\s\S]*?)\n *\\begin{document}([\s\S]*?)\n *\\end{document}" )
+val rxDocument = regex(r"^([\s\S]*?)\n *\\begin{document}([\s\S]*?)\n *\\end{document}" )
 
-function extractMeta( text0 : string, context, mdata0 : list<string> ) : (list<string>,string) {
+fun extractMeta( text0 : string, contxt, mdata0 : list<string> ) : (list<string>,string) {
   var mdata := mdata0
-  val content = metadataGrammar.foldl( text0, fun(text,mrule) {
-    text.replaceAll(mrule.regex, fun(cap) {
-      val metas = zipWith(mrule.keys,(mrule.values)(cap,context),texMeta)
+  val content = metadataGrammar.foldl( text0, fn(text,mrule) {
+    text.replaceAll(mrule.regex, fn(cap) {
+      val metas = zipWith(mrule.keys,(mrule.values)(cap,contxt),texMeta)
       mdata := mdata + metas
       (mrule.replacer)(cap)
     })

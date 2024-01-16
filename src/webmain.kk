@@ -9,8 +9,7 @@
 // Main Madoko client-side entry
 module webmain
 
-import std/dict
-import std/log
+import std/data/dict
 import version
 import common
 import options
@@ -18,7 +17,7 @@ import driver
 import storage
 import mathStatic
 
-public function initialOptions( args : string = "" ) : io options {
+pub fun initialOptions( args : string = "" ) : io options {
   val opts = if (args=="") then Options(version=version/version)
               else match(parseOptions(version/version,args)) {
                 Just(cmdOpts) -> cmdOpts.options
@@ -33,36 +32,36 @@ public function initialOptions( args : string = "" ) : io options {
 
 val coptions = CommandOptions()
 
-public function writeTextFile( fileName : string, content : string ) : io () {
+pub fun writeTextFile( fileName : string, content : string ) : io () {
   storage/writeTextFileSync( fileName, content )
 }
 
-public function readTextFile( fname : string ) : io string {
+pub fun readTextFile( fname : string ) : io string {
   readTextFileSync( fname );
 }
 
-public function unlinkFile( fname : string ) : io () {
+pub fun unlinkFile( fname : string ) : io () {
   unlinkSync(fname)
 }
 
-public function clearStorage() : io () {
+pub fun clearStorage() : io () {
   clear();
 }
 
-public function addImage( embeds : dict<embedinfo>, imageName : string, data : string ) : dict<embedinfo> {
+pub fun addImage( embeds : dict<embedinfo>, imageName : string, data : string ) : dict<embedinfo> {
   embeds + dict([(imageName,Embedinfo(imageName,data))])
 }
 
 
-public function markdown( inputName : string, input : string, outdir : string, options0 : options, modes: string, convertTex : bool,
+pub fun markdown( inputName : string, input : string, outdir : string, options0 : options, modes: string, convertTex : bool,
                           continue: (md:string,stdout:string,needRerun:bool,options:options,
                                       files:string,filesRefer:string,filesWrite:string,labels:string,links:string,customs:string,entities:string) -> io () ) : io () 
 { 
-  printRedirect( fun(s) {
+  printRedirect( fn(s) {
     log("stdout",s)
   });
 
-  val extramdata = modes.split(";").list.map( fun(key) { (key,"True") })
+  val extramdata = modes.split(";").list.map( fn(key) { (key,"True") })
   val options    = options0( metadata = options0.metadata + extramdata )
 
   val copts = coptions(options = options, outputDir = outdir, convertTex = convertTex)
@@ -70,25 +69,25 @@ public function markdown( inputName : string, input : string, outdir : string, o
   
   var rerun := False;
 
-  function runPdfLatex( srcFile : string, texFile : string, opts : options, content : string, cont : (int) -> io () ) : io () 
+  fun runPdfLatex( srcFile : string, texFile : string, opts : options, content : string, cont : (int) -> io () ) : io () 
   {
     options.printErr("cannot generate pdf in the browser")
     cont(1)
   }
 
-  function runZip( files : list<string>, zipFile : string, opts : options, cont : (bool) -> io () ) : io () {
+  fun runZip( files : list<string>, zipFile : string, opts : options, cont : (bool) -> io () ) : io () {
     options.printErr("cannot zip files in the browser")
     cont(False)
   }
 
-  function runBibtex( bibFiles : list<string>, opts : options, cont : bool -> io () ) : io () 
+  fun runBibtex( bibFiles : list<string>, opts : options, cont : bool -> io () ) : io () 
   {
     rerun := bibFiles.isCons
     //trace("bibtex rerun")
     cont(bibFiles.isCons)
   } 
 
-  function runMathStatic( content : string, inpName : string, outputname : string,
+  fun runMathStatic( content : string, inpName : string, outputname : string,
                           texNamePlain : string, texNameFull : string,
                           plainPages : pages, fullPages : pages,
                           oldMathPlain : string, oldMathFull : string,
@@ -109,7 +108,7 @@ public function markdown( inputName : string, input : string, outdir : string, o
             withLog("links") {
             withLog("customs") {
             withLog("entities") {
-                processContent(inputName, outName, input, copts, True, runners, fun(output,_,_,options1) {
+                processContent(inputName, outName, input, copts, True, runners, fn(output,_,_,options1) {
                   val stdout = getLog("stdout")
                   val files  = getLog("files")
                   val filesRefer  = getLog("filesRefer")

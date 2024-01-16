@@ -10,13 +10,11 @@
 
 module toc
 
-import std/dict
-import std/flags
-import std/regex
-import std/string
-import std/path
-import std/file
-import std/env
+import std/os/flags
+import std/text/regex
+import std/os/path
+import std/os/file
+import std/os/env
 
 import common
 import entity

@@ -9,10 +9,9 @@
 // Process math statically as LaTeX generated snippets
 module mathStatic
 
-import std/string
-import std/regex
-import std/path
-import std/dict
+import std/text/regex
+import std/os/path
+import std/data/dict
 import common
 import options
 import latexFormatter
@@ -20,24 +19,24 @@ import storage
 import mathParse
 
 
-function concurrent( tasks : list<(cont:(int) -> io ()) -> io ()>, continue : (int) -> io () ) : io () {
+fun concurrent( tasks : list<(cont:(int) -> io ()) -> io ()>, continue : (int) -> io () ) : io () {
   if (tasks.isNil) return continue(0)
 
   var count   := tasks.length
   var lasterr := 0
 
-  function taskContinue( err : int ) {
-    count := count-1
-    if (err != 0) lasterr := err
-    if (count<=0) continue(lasterr)
+  fun taskContinue( err : int ) {
+    count := count - 1
+    if (err != 0) then lasterr := err
+    if (count<=0) then continue(lasterr)
   }
 
-  tasks.foreach fun(task) {
-    onFail( { count := count-1 }, { task(taskContinue) } )
+  tasks.foreach fn(task) {
+    onFail( { count := count - 1 }, { task(taskContinue) } )
   }
 }
 
-function mathHeader( xopts : options, mode : mathkind ) : string
+fun mathHeader( xopts : options, mode : mathkind ) : string
 {
   val mrender = xopts.math.getMathRender(mode)
   val deps    = ["% MathMode: " + mode.show,
@@ -69,20 +68,20 @@ function mathHeader( xopts : options, mode : mathkind ) : string
   deps.join(", ") + "\n"
 }
 
-function mathContent( xopts : options, mode : mathkind, body : string = "" ) : string {
+fun mathContent( xopts : options, mode : mathkind, body : string = "" ) : string {
   val opts = if (xopts.math.docClass!="") then xopts(docClass=xopts.math.docClass) else xopts
   val xbody = "\\begin{mdSnippets}\n" + body + "\n\\end{mdSnippets}"
   opts.mathHeader(mode) + fmtLatexMathFull(mode,xbody,opts)
 }
 
-function mathFormat( xopts : options, mode :mathkind, math : string, outName : string ) : (string,string,string)
+fun mathFormat( xopts : options, mode :mathkind, math : string, outName : string ) : (string,string,string)
 {
   val texName = outName.appendStem("-math-" + mode.show).changeExt(".tex")
   val texFinalName = texName.changeExt(".final.tex")
   (texName,texFinalName,mathContent(xopts,mode,math))
 }
 
-public alias runMathStaticFun
+pub alias runMathStaticFun
   = ( content : string, inName : string, outName : string,
       texNamePlain : string, texNameFull : string,
       plainPages : pages, fullPages : pages,
@@ -90,7 +89,7 @@ public alias runMathStaticFun
       opts : options, continue : (maybe<(dict<mathinfo>,string)>) -> io () ) -> io ()
 
 
-public function mathStatic( mathPlain : string, mathFull : string,
+pub fun mathStatic( mathPlain : string, mathFull : string,
                             inName : string, outName : string, xopts : options, content : string,
                             runMathStatic : runMathStaticFun,
                             continue : (maybe<(dict<mathinfo>,string)>) -> io () ) : io ()
@@ -114,11 +113,11 @@ public function mathStatic( mathPlain : string, mathFull : string,
 
   xopts.print("rendering math.")
   if ((outMathPlain != oldMathPlain || xopts.rebuild || !fexistsSync(texNamePlain)) &&
-      !(tryWriteTextFile(texNamePlain,outMathPlain))) {
+      !(tryWriteTextFile(texNamePlain,outMathPlain))) then {
     xopts.printErr("error: unable to write: " + texNamePlain)
     return continue(Nothing)
   }
-  if ((outMathFull != oldMathFull || xopts.rebuild || !fexistsSync(texNameFull)) && !(tryWriteTextFile(texNameFull,outMathFull))) {
+  if ((outMathFull != oldMathFull || xopts.rebuild || !fexistsSync(texNameFull)) && !(tryWriteTextFile(texNameFull,outMathFull))) then {
     xopts.printErr("error: unable to write: " + texNameFull)
     return continue(Nothing)
   }
@@ -129,9 +128,9 @@ public function mathStatic( mathPlain : string, mathFull : string,
   val plainPages = mathAnalyseChanged(outMathPlain,xopts.math.dim,xopts.rebuild || rebuildPlain)
   val fullPages = mathAnalyseChanged(outMathFull,xopts.math.dim,xopts.rebuild || rebuildFull)
 
-  if (xopts.verbose>=1) {
-    if (plainPages.isNil && mathPlain.containsSnippet) xopts.print("math unchanged (plain)")
-    if (fullPages.isNil && mathFull.containsSnippet) xopts.print("math unchanged (full)")
+  if (xopts.verbose>=1) then {
+    if (plainPages.isNil && mathPlain.containsSnippet) then xopts.print("math unchanged (plain)")
+    if (fullPages.isNil && mathFull.containsSnippet) then xopts.print("math unchanged (full)")
   }
   if (plainPages.isNil && fullPages.isNil) then {
     tryRename(texNamePlain,texNameFinalPlain); // save result to prevent rebuilds
@@ -145,26 +144,26 @@ public function mathStatic( mathPlain : string, mathFull : string,
 }
 
 
-function getHeader( src : string ) : string
+fun getHeader( src : string ) : string
 {
   match (src.find(rxHdr)) {
     Just(cap) -> cap.matched
     Nothing   -> ""
   }
 }
-val rxHdr = regex(@"^.*\n")
+val rxHdr = regex(r"^.*\n")
 
-public alias pages = list<(int,int)>
+pub alias pages = list<(int,int)>
 
-public function count( ps : pages ) : int {
-  ps.foldl(0,fun(n,p) {
+pub fun count( ps : pages ) : int {
+  ps.foldl(0,fn(n,p) {
     n + (p.snd - p.fst + 1)
   })
 }
 
-function range(lo,n) { if (lo<=0) then [] else [(lo,lo+n)] }
+fun range(lo,n) { if (lo<=0) then [] else [(lo,lo+n)] }
 
-function compress( pages : list<int>, lo : int = ~1, n : int = 0 ) : pages {
+fun compress( pages : list<int>, lo : int = ~1, n : int = 0 ) : pages {
   match(pages) {
     Nil -> range(lo,n)
     Cons(p,ps) -> {
@@ -175,7 +174,7 @@ function compress( pages : list<int>, lo : int = ~1, n : int = 0 ) : pages {
   }
 }
 
-public function inside( page : int, pages : pages ) : bool {
+pub fun inside( page : int, pages : pages ) : bool {
   match(pages) {
     Nil -> False
     Cons((lo,hi),ps) -> {
@@ -184,12 +183,12 @@ public function inside( page : int, pages : pages ) : bool {
   }
 }
 
-function mathAnalyseChanged( snippets : string, dim : dict<mathinfo>, rebuild : bool ) : pages
+fun mathAnalyseChanged( snippets : string, dim : dict<mathinfo>, rebuild : bool ) : pages
 {
-  val digests = snippets.findAll(rxDigest).list.mapIndexed( fun(idx,cap) { (idx+1,cap.groups[1]) })
+  val digests = snippets.findAll(rxDigest).list.mapIndexed( fn(idx,cap) { (idx+1,cap.groups[1]) })
   val maxPage = digests.length
 
-  val pages = digests.concat fun(idigest) {
+  val pages = digests.concat fn(idigest) {
                 val (current,digest) = idigest
                 match(dim[digest]) {
                   Just(_)  | !rebuild -> []

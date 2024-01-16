@@ -9,11 +9,9 @@
 // The parsing of metadata
 module metadata
 
-import std/log
-import std/dict
-import std/regex
-import std/string
-import std/path
+import std/data/dict
+import std/text/regex
+import std/os/path
 import common
 import options
 import optionsMeta
@@ -23,13 +21,13 @@ import expression
 
 // Parse the meta-data at the start of a document,
 // and return updated options and the rest of the document
-public function parseMeta( options0 : options, fmt : formatter, txt : string ) : div (options, string) 
+pub fun parseMeta( options0 : options, fmt : formatter, txt : string ) : div (options, string) 
 {
   // read initial metadata
   val (txt1,lineCount0) = stripInitialWhite(txt)
   val (mdata1,rest,lineCount) = parsePlainMeta(txt1, fmt, options0.lineMap, verbose=options0.verbose >= 4, lines=lineCount0 )
   // read further <!--meta sections
-  val mdatas = rest.findAll( rxMetaSection ).list.map fun(cap) {
+  val mdatas = rest.findAll( rxMetaSection ).list.map fn(cap) {
     val (metaTxt,lineCountMeta) = stripInitialWhite(cap.groups[1] + "\n")
     val lineNo = lineCount + rest.substr(0,cap.index).count("\n") + lineCountMeta
     val (mdatax,_,_) = parsePlainMeta(metaTxt, fmt, options0.lineMap, [], options0.verbose >= 4, lineNo )
@@ -47,15 +45,15 @@ public function parseMeta( options0 : options, fmt : formatter, txt : string ) :
    then (options(lineNo = options.lineNo + lineCount),rest)
    else (options,rest)  
 }
-val rxMetaSection = regex(@"^<!--meta *\n([\s\S]*?)^-->", multiline=True)
+val rxMetaSection = regex(r"^<!--meta *\n([\s\S]*?)^-->", multiline=True)
 
-function stripInitialWhite( txt : string ) : (string,int) {
+fun stripInitialWhite( txt : string ) : (string,int) {
   match(txt.find(rxInitialWhite)) {
     Nothing   -> (txt,0)
     Just(cap) -> (txt.substr(cap.next), txt.substr(0,cap.next).count("\n"))
   }
 }
-val rxInitialWhite = regex(@"^(\s|<!--(?!meta\b|madoko\b)[\s\S]*?-->|~+ *begin htmlraw\s+~+end htmlraw\b)+")
+val rxInitialWhite = regex(r"^(\s|<!--(?!meta\b|madoko\b)[\s\S]*?-->|~+ *begin htmlraw\s+~+end htmlraw\b)+")
 
 
 // --------------------------------------------------------------
@@ -69,21 +67,21 @@ type ckey {
   Support( condition: string, body: list<ckey>, lineInfo : string )
 }
 
-function cmetadata( options : options ) : cmetadata {
-  options.metadata.map( fun(kv) { Key(kv.fst, kv.snd) } )
+fun cmetadata( options : options ) : cmetadata {
+  options.metadata.map( fn(kv) { Key(kv.fst, kv.snd) } )
 }
 
 // --------------------------------------------------------------
 // Parse metadata keys
 // --------------------------------------------------------------
 
-function makeKey(k,pre,value,rawvalue,lineMap,lines,isMatching) : ckey {
+fun makeKey(k,pre,value,rawvalue,lineMap,lines,isMatching) : ckey {
   val kstart = k.substr(0,1) 
   val isrule = (kstart=="#" || kstart=="." || kstart=="~")
   val key = if (isrule) then k.trim.toLower
             elif (isMatching) then "~" + k.trim.toLower 
             else k.trim.normalizeId
-  if (key.startsWith("~")) {
+  if (key.startsWith("~")) then {
     log("customs","{\"name\":" + key.json + ",\"display\":" + 
         (if (isrule) then k.substr(1) else k).json + "}")
   }
@@ -95,11 +93,11 @@ function makeKey(k,pre,value,rawvalue,lineMap,lines,isMatching) : ckey {
    else Support( pre, [ckey], translateLine(lineMap,lines))
 }                 
 
-function parsePlainMeta( txt : string, fmt : formatter, lineMap: lineMap, metadata : cmetadata = [], verbose : bool = False, lines : int = 0 ) : div (cmetadata,string,int) 
+fun parsePlainMeta( txt : string, fmt : formatter, lineMap: lineMap, metadata : cmetadata = [], verbose : bool = False, lines : int = 0 ) : div (cmetadata,string,int) 
 { 
   match(txt.find(rxMetaComment)) {
     Just(cap) -> {
-      if (cap.groups[1].bool) {
+      if (cap.groups[1].bool) then {
         parsePlainMeta(cap.groups[2].unindent + cap.groups[3] + txt.substr1(cap.next), fmt, lineMap, metadata, verbose, 
                        lines + txt.substr(0,cap.index).count("\n") + 1)
       }
@@ -111,10 +109,10 @@ function parsePlainMeta( txt : string, fmt : formatter, lineMap: lineMap, metada
     Nothing -> {
       match(txt.find(rxSupports)) {
         Just(cap) -> {
-          if (verbose) trace("meta data: @if " +  cap.groups[1].trim + "{" + cap.groups[2] + "}{" )
+          if (verbose) then trace("meta data: @if " +  cap.groups[1].trim + "{" + cap.groups[2] + "}{" )
           val (body,rest,_) = parsePlainMeta(cap.groups[2].unindent.trim, fmt, lineMap, [], verbose, lines + cap.groups[1].count("\n") )
-          if (rest != "") warning("invalid metadata: " + rest.cutoff(40))
-          if (verbose) trace("}" )
+          if (rest != "") then warning("invalid metadata: " + rest.cutoff(40))
+          if (verbose) then trace("}" )
           val support = Support(cap.groups[1].trim, body, translateLine(lineMap,lines+1))
           val lines2 = txt.substr(0,cap.next).count("\n")
           parsePlainMeta( txt.substr1(cap.next), fmt, lineMap, Cons(support,metadata), verbose, lines + lines2 )
@@ -127,12 +125,12 @@ function parsePlainMeta( txt : string, fmt : formatter, lineMap: lineMap, metada
           Just(cap) -> {
             val rawvalue = cap.groups[4] || cap.groups[6]  // 6=:value, 4={value}
             val value    = rawvalue.joinLines.trim
-            if (verbose) trace("meta data: " + cap.groups[2] + ": " + value.cutoff(80) )
+            if (verbose) then trace("meta data: " + cap.groups[2] + ": " + value.cutoff(80) )
             val rawkeys = //if (cap.groups.matchedOn(3)) then 
                           cap.groups[2].split(",").list.map(trim)
                           //else [cap.groups[2]]     
-            val pre = if (cap.groups[1] != "") then "@" + cap.groups[1] + " " else ""
-            val kvs = rawkeys.map( fun(k) { makeKey(k,pre,value,rawvalue,lineMap,lines,(cap.groups[5]=="}")) } );                
+            val pre = if (cap.groups[1] != "") then "r" + cap.groups[1] + " " else ""
+            val kvs = rawkeys.map( fn(k) { makeKey(k,pre,value,rawvalue,lineMap,lines,(cap.groups[5]=="}")) } );                
             val lines2 = txt.substr(0,cap.next).count("\n")
             parsePlainMeta( txt.substr1(cap.next), fmt,lineMap, kvs + metadata, verbose, lines+lines2 )
           }
@@ -142,18 +140,18 @@ function parsePlainMeta( txt : string, fmt : formatter, lineMap: lineMap, metada
   }
 } 
 
-val rxMetaKeyEnd  = @"(?:(?:\[[^\]\n\r]*\])+|\*)?"
-val rxMetaKey     = @"(?:@([\w\-@]+) +)?((?:\w|([\.#~])(?=\S))[\w\-\.#~, ]*?" + rxMetaKeyEnd + @") *(?=[\{:])"
-val rxMetaValue   = @"(?:[:] *(.*(?:\n .*)*)(?:\n+(?=\n|" + rxMetaKey + @"|@(?:if|supports)\b|<!--)|$))"
-val rxMetaAttrContent = @"(?:[^\\'""\{\}/]|\\[\s\S]|'(?:[^\\']|\\[\s\S])*'|""(?:[^\\""]|\\[\s\S])*""|/(?:[^\\/\n]|\\.)*/)"
-val rxMetaAttrs   = @"(?:\{[:]?(" + rxMetaAttrContent + @"*)(\})\s*)"
-val rxMetaGroup   = @"(?:\{((?:" + rxMetaAttrContent + "|" + rxMetaAttrs + @")*)\} *(?:\n|$)\s*)"
+val rxMetaKeyEnd  = r"(?:(?:\[[^\]\n\r]*\])+|\*)?"
+val rxMetaKey     = r"(?:@([\w\-@]+) +)?((?:\w|([\.#~])(?=\S))[\w\-\.#~, ]*?" + rxMetaKeyEnd + r") *(?=[\{:])"
+val rxMetaValue   = r"(?:[:] *(.*(?:\n .*)*)(?:\n+(?=\n|" + rxMetaKey + r"|@(?:if|supports)\b|<!--)|$))"
+val rxMetaAttrContent = r#"(?:[^\\'"\{\}/]|\\[\s\S]|'(?:[^\\']|\\[\s\S])*'|"(?:[^\\"]|\\[\s\S])*"|/(?:[^\\/\n]|\\.)*/)"#
+val rxMetaAttrs   = r"(?:\{[:]?(" + rxMetaAttrContent + r"*)(\})\s*)"
+val rxMetaGroup   = r"(?:\{((?:" + rxMetaAttrContent + "|" + rxMetaAttrs + r")*)\} *(?:\n|$)\s*)"
 
-val rxMetaComment = regex(@"^(?:\s*<!--(?:(meta|madoko)\b *\n)?([\s\S]*?)-->((?: *\n)+))")
-val rxMeta        = regex(@"^"+ rxMetaKey + @"(?:" + rxMetaAttrs + "|" + rxMetaValue + @")")
-val rxSupports    = regex(@"^@(?:if|supports)\b([^\n\{]*)" + rxMetaGroup)
+val rxMetaComment = regex(r"^(?:\s*<!--(?:(meta|madoko)\b *\n)?([\s\S]*?)-->((?: *\n)+))")
+val rxMeta        = regex(r"^"+ rxMetaKey + r"(?:" + rxMetaAttrs + "|" + rxMetaValue + r")")
+val rxSupports    = regex(r"^@(?:if|supports)\b([^\n\{]*)" + rxMetaGroup)
 
-public function cutoff( s : string, n : int ) : string {
+pub fun cutoff( s : string, n : int ) : string {
   if (s.length > n) then s.substr(0,n) + "..." else s
 }
 
@@ -162,21 +160,21 @@ public function cutoff( s : string, n : int ) : string {
 // --------------------------------------------------------------
 
 // fill out all the authorN keys
-public function completeAuthorKeys( mdata : metadata ) : metadata {
+pub fun completeAuthorKeys( mdata : metadata ) : metadata {
   var authorCount := 0
-  val authors = mdata.concat fun(kv) {
+  val authors = mdata.concat fn(kv) {
     val (key,value) = kv
-    if (key=="author") {
+    if (key=="author") then {
       authorCount := authorCount+1
       [("author" + authorCount.show, value)]
     }
-    elif (key=="affiliation" || key=="institute" || key=="address") {
+    elif (key=="affiliation" || key=="institute" || key=="address") then {
       [("affiliation" + authorCount.show, value)]
     }
-    elif (key=="email") {
+    elif (key=="email") then {
       [("email" + authorCount.show, value.escapeAt)]
     }
-    elif (key=="author-note") {
+    elif (key=="author-note") then {
       [("author-note" + authorCount.show, value)]
     }
     else []
@@ -184,21 +182,21 @@ public function completeAuthorKeys( mdata : metadata ) : metadata {
   mdata + authors + [("author-count", authorCount.show )]
 }
 
-function escapeAt( s : string ) : string {
-  s.replaceAll(regex(@"\\(.)|(@)"), @"\$1$2")
+fun escapeAt( s : string ) : string {
+  s.replaceAll(regex(r"\\(.)|(@)"), r"\$1$2")
 }
 
 // --------------------------------------------------------------
 // Flatten conditional keys into non-conditional list
 // --------------------------------------------------------------
 
-function evalConditionals( mdata :cmetadata, verbose : int = 0 ) : <div> metadata {
+fun evalConditionals( mdata :cmetadata, verbose : int = 0 ) : <div> metadata {
   val modes = mdict()
   flatten(mdata,modes,verbose)
 }
 
-function flatten( mdata:cmetadata, modes:mdict<h,constant>, verbose : int ) : <div,st<h>> metadata {
-  mdata.concat fun(ckey) {
+fun flatten( mdata:cmetadata, modes:mdict<h,constant>, verbose : int ) : <div,st<h>> metadata {
+  mdata.concat fn(ckey) {
     match(ckey) {
       Key(key,value) -> {
         [(key,value)]
@@ -220,22 +218,22 @@ function flatten( mdata:cmetadata, modes:mdict<h,constant>, verbose : int ) : <d
 // Evaluate expressions in the context of metadata
 // --------------------------------------------------------------
 
-function evaluateBool( cond : string, modes : mdict<h,constant>, mdata : cmetadata, verbose : int  , current : list<string> = []) : <div,st<h>> bool {
+fun evaluateBool( cond : string, modes : mdict<h,constant>, mdata : cmetadata, verbose : int  , current : list<string> = []) : <div,st<h>> bool {
   var recursive := False
-  function lookup(v,display) {
-    if (current.contains(v)) {
+  fun lookup(v,display) {
+    if (current.contains(v)) then {
       recursive := True
       String("False")
     }
     else match(lookupMode(modes,v,mdata,Cons(v,current),verbose)) {
       Nothing -> {
-        if (verbose >= 3) warning("undefined variable: " + display)
+        if (verbose >= 3) then warning("undefined variable: " + display)
         String("False")
       }
       Just(c) -> c
     }
   }
-  val b = evaluate( cond, fun(e) { evalExpr(e,lookup).bool }, False)
+  val b = evaluate( cond, fn(e) { evalExpr(e,lookup).bool }, False)
   // trace("evaluate: " + cond + " -> " + b.show + " (recursive=" + recursive.show + ")" )
   if (recursive) 
    then False // a self-dependent support block evaluates to false
@@ -243,19 +241,19 @@ function evaluateBool( cond : string, modes : mdict<h,constant>, mdata : cmetada
 }
 
 
-function lookupMode( modes : mdict<h,constant>, mode : string, mdata : cmetadata, current : list<string>, verbose : int ) : <div,st<h>> maybe<constant> {
+fun lookupMode( modes : mdict<h,constant>, mode : string, mdata : cmetadata, current : list<string>, verbose : int ) : <div,st<h>> maybe<constant> {
   match(modes[mode]) {
     Just(c) -> {
       //trace("pre-evaluated: " + mode + ": " + c.show)
       Just(c)
     }
     Nothing -> {
-      val mbRes = mdata.reverse.foreachUntil( fun(ckey) { 
+      val mbRes = mdata.reverse.foreachUntil( fn(ckey) { 
         match(ckey) {
-          Key(key,raw) -> {
+          Key(key,lraw) -> {
             if (key != mode) then Nothing
              else {
-               val res = String(raw)
+               val res = String(lraw)
                //trace("found var: " + key + ": " + raw)
                modes[mode] := res
                Just(res)
@@ -263,7 +261,7 @@ function lookupMode( modes : mdict<h,constant>, mode : string, mdata : cmetadata
           }
           Support(cond,body,_lineInfo) -> {
             if (body.containsKey(mode)) then {
-              if (evaluateBool(cond,modes,mdata,verbose,current)) {
+              if (evaluateBool(cond,modes,mdata,verbose,current)) then {
                 //trace(" look inside: " + cond)
                 lookupMode(modes,mode,body,current,verbose)
               }
@@ -274,7 +272,7 @@ function lookupMode( modes : mdict<h,constant>, mode : string, mdata : cmetadata
             }
             else {
                //trace(" support " + cond + " does not contain " + mode + ": " + lineInfo )
-               //trace(" -> " + body.map(fun(ckey) { match(ckey) { Key(k) -> k; _ -> "<support>" } }).join(","))
+               //trace(" -> " + body.map(fn(ckey) { match(ckey) { Key(k) -> k; _ -> "<support>" } }).join(","))
                Nothing
             }
           }
@@ -291,8 +289,8 @@ function lookupMode( modes : mdict<h,constant>, mode : string, mdata : cmetadata
   }
 }
 
-function containsKey( mdata : cmetadata, key : string ) : div bool {
-  mdata.any( fun(ckey) {
+fun containsKey( mdata : cmetadata, key : string ) : div bool {
+  mdata.any( fn(ckey) {
     match(ckey) {
       Key(k) -> k == key
       Support(_cond,body) -> body.containsKey(key)
@@ -305,14 +303,14 @@ function containsKey( mdata : cmetadata, key : string ) : div bool {
 // Default metadata
 // --------------------------------------------------------------
 
-function defaultMeta( options : options, fmt : formatter ) : string {
+fun defaultMeta( options : options, fmt : formatter ) : string {
   ( [ "Tex: False", "Html: False", "Prelude: prelude",
       // formatter
       fmt.showFormatter + ": True",
       // full?
       "Full: " + options.full.maybe(True,id).show,
       // legacy for old prelude
-      @"bibliography { bibstyle:'" + options.bibStyle.styleName + @"'; bibdata:'" + options.bib.splitPaths.join(",") + "'; tex-elem:mdBibliography }",
+      r"bibliography { bibstyle:'" + options.bibStyle.styleName + r"'; bibdata:'" + options.bib.splitPaths.join(",") + "'; tex-elem:mdBibliography }",
     ] +
     ["\n"]
   ).join("\n") 

@@ -9,12 +9,9 @@
 // Process the bilbliography
 module bibliography
 
-import std/log
-import std/regex
-import std/path
-import std/dict
-import std/string
-import std/crypto
+import std/text/regex
+import std/os/path
+import std/data/dict
 import common
 import options
 import storage
@@ -24,7 +21,7 @@ import runcsl
 
 
 
-public function extractCitestyle( opts : options, outName : string ) : io options {
+pub fun extractCitestyle( opts : options, outName : string ) : io options {
   val auxName  = outName.noext + "-bib.bbl.mdk" // the first..
   val contents = readTextFileDef( auxName, "", False )
   match (contents.find(rxCiteStyle)) {
@@ -37,19 +34,19 @@ public function extractCitestyle( opts : options, outName : string ) : io option
     }
   }
 }
-val rxCiteStyle = regex(@"\bcite\-style *: *""([^""]+)""")
+val rxCiteStyle = regex(r#"\bcite\-style *: *"([^"]+)""#)
 
 
 // Generate CSL bibliography; return `True` if successful
-function genBibCsl( aux : auxinfo, outdir, searchDirs, mopts : options ) : io bool {
+fun genBibCsl( aux : auxinfo, outdir, searchDirs, mopts : options ) : io bool {
   mopts.print("bibliography " + (if (aux.auxid.bool) then "(" + aux.auxid + ") " else "") + "style: " + aux.style.styleName.stemname)
-  val searchDirsCsl = searchDirs.concat( fun(dir) { [dir,combine(dir,"csl")] } )
-  val searchDirsLoc = searchDirs.concat( fun(dir) { [dir,combine(dir,"locales")] } )
+  val searchDirsCsl = searchDirs.concat( fn(dir) { [dir,combine(dir,"csl")] } )
+  val searchDirsLoc = searchDirs.concat( fn(dir) { [dir,combine(dir,"locales")] } )
 
   val madokoStyle = searchReadTextFile( "madoko.csl", searchDirsCsl, "", True, mopts)
   val locale      = searchReadTextFile( "locales-" + aux.style.locale + ".xml",searchDirsLoc, "", True, mopts )
   val auxcontents = readTextFileDef(aux.auxfile,"",False)
-  val bibfiles    = mopts.bib.splitPaths.map( fun(bib) { 
+  val bibfiles    = mopts.bib.splitPaths.map( fn(bib) { 
                       searchReadTextFile(bib, searchDirs,".bib",True,mopts) 
                     })
   val citations   = auxcontents.findCitations
@@ -62,11 +59,11 @@ function genBibCsl( aux : auxinfo, outdir, searchDirs, mopts : options ) : io bo
                       }
                     }
 
-  if (citations.length > 0 && cslStyle.contents.bool && madokoStyle.contents.bool && locale.contents.bool) {
+  if (citations.length > 0 && cslStyle.contents.bool && madokoStyle.contents.bool && locale.contents.bool) then {
     // ready to invoke CSL processor
     val res = runCsl( citations, bibfiles, cslStyle, madokoStyle, locale, aux.auxid , "")
-    if (res.warnings.bool) mopts.printErr(res.warnings);
-    if (res.errors.bool) {
+    if (res.warnings.bool) then mopts.printErr(res.warnings);
+    if (res.errors.bool) then {
       mopts.printErr(res.errors)
       False
     }
@@ -82,9 +79,9 @@ function genBibCsl( aux : auxinfo, outdir, searchDirs, mopts : options ) : io bo
   }
 }
 
-val rxIndepParent = regex(@"<link *href *= *""(?:https?://www.zotero.org/styles/)?([^""]+)"" *rel *= *""independent-parent"" */>")
+val rxIndepParent = regex(r#"<link *href *= *"(?:https?://www.zotero.org/styles/)?([^"]+)" *rel *= *"independent-parent" */>"#)
 
-function searchReadTextFile( fname, searchDirs, ext, required, mopts ) : io fileinfo {
+fun searchReadTextFile( fname, searchDirs, ext, required, mopts ) : io fileinfo {
   match(trySearchReadTextFile(fname,searchDirs,ext,required)) {
     Nothing -> {
       mopts.printErr("warning: unable to read: " + fname.defaultExt(ext))
@@ -95,9 +92,9 @@ function searchReadTextFile( fname, searchDirs, ext, required, mopts ) : io file
 }
 
 
-function findCitations( aux : string ) : list<citeinfo> {
+fun findCitations( aux : string ) : list<citeinfo> {
   var lineinfo := ""
-  aux.lines.list.map( fun(line) {
+  aux.lines.list.map( fn(line) {
     match (line.find(rxDataLine)) {
       Just(cap) -> {
         lineinfo := cap.groups[1]
@@ -110,23 +107,23 @@ function findCitations( aux : string ) : list<citeinfo> {
     }   
   }).concatMaybe
 }
-val rxCitation = regex(@"^\\citation\{([^\}]+)\}")
-val rxDataLine = regex(@"^%mdk-data-line=\{([^\}]+)\}")
+val rxCitation = regex(r"^\\citation\{([^\}]+)\}")
+val rxDataLine = regex(r"^%mdk-data-line=\{([^\}]+)\}")
 
-public function genBibtex( runBibtex, auxInfos : list<auxinfo>, outdir, searchDirs, mopts : options, continue : (bool) -> io () ) : io () {
-  val (csls,bsts) = auxInfos.partition( fun(info) { info.style.isCsl } );
+pub fun genBibtex( runBibtex, auxInfos : list<auxinfo>, outdir, searchDirs, mopts : options, continue : (bool) -> io () ) : io () {
+  val (csls,bsts) = auxInfos.partition( fn(info) { info.style.isCsl } );
 
-  function continueCsl(biberr) {
-    val ok = csls.all fun(aux) {
+  fun continueCsl(biberr) {
+    val ok = csls.all fn(aux) {
       genBibCsl( aux, outdir, searchDirs, mopts )
     }
     continue(biberr || !ok);
   }
 
   // copy .bst files to the output directory since Bibtex requires that
-  bsts.foreach fun(aux) {
+  bsts.foreach fn(aux) {
     val bstyle = aux.style.styleName
-    if (bstyle.extname != "" || bstyle.dirname != "") {
+    if (bstyle.extname != "" || bstyle.dirname != "") then {
       // copy bst file
       tryCopyTextFileFromTo( bstyle.basename.defaultExt(".bst"), bstyle.dirname, outdir, True )
       ()
@@ -134,9 +131,9 @@ public function genBibtex( runBibtex, auxInfos : list<auxinfo>, outdir, searchDi
   }
   
   // run Bibtex first
-  runBibtex(bsts.map(auxfile),mopts) fun(err:bool) {
-    if (!err) {
-      val ok = bsts.all fun(bib) {
+  runBibtex(bsts.map(auxfile),mopts) fn(err:bool) {
+    if (!err) then {
+      val ok = bsts.all fn(bib) {
         val bblname = bib.auxfile.changeExt(".bbl")
         match (tryReadTextFile(bblname, True)) {
           Left -> {
@@ -158,7 +155,7 @@ public function genBibtex( runBibtex, auxInfos : list<auxinfo>, outdir, searchDi
 }
 
 // Write the final aux file; returns `True` if successful
-function writeFinalAux( auxfile : string ) : io bool {
+fun writeFinalAux( auxfile : string ) : io bool {
   tryCopyTextFile( auxfile, auxfile.changeExt(".final.aux"), True )
 }
 
@@ -168,11 +165,11 @@ struct auxinfo(
   style  : bibstyle
 )
 
-public function writeCitationsData( citeData : string, outName : string, searchDirs : list<string>, bibNames : list<string>, opts : options ) : io list<auxinfo> {
+pub fun writeCitationsData( citeData : string, outName : string, searchDirs : list<string>, bibNames : list<string>, opts : options ) : io list<auxinfo> {
   val defaultAux = outName.noext + "-bib.aux"
   val cites = splitCiteData( citeData, opts ) // split citations over multiple bibliographies
   val bibData = createBibData( outName.dirname, searchDirs, bibNames, opts.citestyle ) // copy bib files and compute md5's  
-  cites.filterMap( fun(kv) {
+  cites.filterMap( fn(kv) {
     val (auxStem,(auxData,bibStyle)) = kv
     val auxName = outName.noext + "-bib"+ (if (auxStem=="") then "" else "-" + auxStem) + ".aux"
     val changed = writeCitations(auxData, bibData, bibStyle, auxName, opts)  // write aux files and compare to final.aux for changes
@@ -182,7 +179,7 @@ public function writeCitationsData( citeData : string, outName : string, searchD
 }
 
 // split citations in different parts: one for each bibliography ([BIB=<id>] element)
-function splitCiteData( citeData : string, opts : options ) : io list<(string,(string,bibstyle))> {
+fun splitCiteData( citeData : string, opts : options ) : io list<(string,(string,bibstyle))> {
   if (citeData.trim == "") return []
   val style = match (opts.bibStyle) {
                 Csl(name,loc) | loc.isEmpty -> Csl(name,opts.locale)
@@ -204,9 +201,9 @@ function splitCiteData( citeData : string, opts : options ) : io list<(string,(s
     }
   }
 }
-val rxBibFile = regex(@"^ *%mdk bib: *([^\s,]*) *(?:, *csl-style: *([^\s,]*) *)?(?:, *bib-style: *([^\s,]*))?(?:, *locale: *([^\s,]* *))?$", multiline=True )
+val rxBibFile = regex(r"^ *%mdk bib: *([^\s,]*) *(?:, *csl-style: *([^\s,]*) *)?(?:, *bib-style: *([^\s,]*))?(?:, *locale: *([^\s,]* *))?$", multiline=True )
 
-function auxInsert( auxName : string, auxData : string, style : bibstyle, xs : list<(string,(string,bibstyle))> ) : list<(string,(string,bibstyle))> {
+fun auxInsert( auxName : string, auxData : string, style : bibstyle, xs : list<(string,(string,bibstyle))> ) : list<(string,(string,bibstyle))> {
   match(xs) {
     Nil -> [(auxName,(auxData,style))]
     Cons(x,xx) -> {
@@ -219,8 +216,8 @@ function auxInsert( auxName : string, auxData : string, style : bibstyle, xs : l
 
 
 // Find and copy bib files to the output directory, and return a `bibdata` command with md5 hash
-function createBibData( auxDir : string, searchDirs : list<string>, bibNames : list<string>, mcs : maybe<citestyle> ) : io string {
-  val (bibStems,bibContents) = bibNames.map( fun(bibName) {
+fun createBibData( auxDir : string, searchDirs : list<string>, bibNames : list<string>, mcs : maybe<citestyle> ) : io string {
+  val (bibStems,bibContents) = bibNames.map( fn(bibName) {
     match(trySearchReadTextFile(bibName,searchDirs,".bib")) {
       Nothing -> {
         warning( "unable to find bibliography file: " + bibName )
@@ -228,8 +225,8 @@ function createBibData( auxDir : string, searchDirs : list<string>, bibNames : l
       }
       Just((bibFile,content)) -> {
         // trace("bib: found: " + bibFile)
-        if (dirname(bibFile) != auxDir) {
-          if (!(tryWriteTextFile( combine(auxDir,basename(bibFile)), content))) {
+        if (dirname(bibFile) != auxDir) then {
+          if (!(tryWriteTextFile( combine(auxDir,basename(bibFile)), content))) then {
             println("warning: unable to copy bibliography file to output directory: " + bibName)
           }
         }
@@ -244,7 +241,7 @@ function createBibData( auxDir : string, searchDirs : list<string>, bibNames : l
 }
 
 // Write citations to an aux file. Returns "True" if the bibliography data changed.
-function writeCitations( auxData : string, bibData : string, bibStyle: bibstyle, auxName : string, opts : options ) : io (bool) {
+fun writeCitations( auxData : string, bibData : string, bibStyle: bibstyle, auxName : string, opts : options ) : io (bool) {
   val oldData = readTextFileDef(auxName.changeExt(".final.aux"),"",False)
   val newData = "% Generated by Madoko, version " + opts.version + "\n" + auxData + "\n" +
                   (match(bibStyle) {
@@ -253,18 +250,18 @@ function writeCitations( auxData : string, bibData : string, bibStyle: bibstyle,
                   }) 
                   + bibData
                   
-  if (newData != oldData) {
+  if (newData != oldData) then {
     if (!(tryWriteTextFile(auxName, newData))) then {
       opts.printErr("error: unable to write citations: " + auxName )
     }
   }
   
-  val oldCites = oldData.findAll(rxCite).list.map(fun(cap) { cap.matched }).join("\n");
-  val newCites = newData.findAll(rxCite).list.map(fun(cap) { cap.matched }).join("\n");
+  val oldCites = oldData.findAll(rxCite).list.map(fn(cap) { cap.matched }).join("\n");
+  val newCites = newData.findAll(rxCite).list.map(fn(cap) { cap.matched }).join("\n");
   //trace("oldCites: " + oldCites)
   //trace("newCites: " + newCites)
   return (oldCites != newCites)
 }
-val rxCite = regex(@"^(?:(?:%?\\(citation|bibstyle|biblocale|bibdata|cslstyle|cslocale|citestyle)\b.*)|(?:%md5:.*))$",multiline=True)
+val rxCite = regex(r#"^(?:(?:%?\\(citation|bibstyle|biblocale|bibdata|cslstyle|cslocale|citestyle)\b.*)|(?:%md5:.*))$"#,multiline=True)
 
 

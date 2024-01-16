@@ -9,8 +9,8 @@
 // Parse Madoko markdown text.
 module madoko
 
-import std/dict
-import std/regex
+import std/data/dict
+import std/text/regex
 import common
 import options
 import metadata
@@ -31,7 +31,7 @@ import std/log
 ---------------------------------------- */
 
 // Takes source markdown input and returns formatted html
-public function markdown( src : string, 
+pub fun markdown( src : string, 
                           options : options = initialOptions0, 
                           fmt : formatter = FmtHtml 
                         ) : pure (string,options)
@@ -40,20 +40,20 @@ public function markdown( src : string,
 }
 
 // Process only markdown between <xmp> tags 
-function markdownXmp( src : string, options : options = initialOptions0, fmt : formatter = FmtHtml ) : pure (string,options)
+fun markdownXmp( src : string, options : options = initialOptions0, fmt : formatter = FmtHtml ) : pure (string,options)
 {
   val commented = "~begin htmlraw\n" + src.replaceAll(rxxmp,"\n~end htmlraw\n$2\n~begin htmlraw\n") + "\n~end htmlraw"
   markdownNormal(commented, options, fmt)
 }
-val rxxmp = regex(@"(<xmp\b" + tagContent + @">)([\s\S]*?)</xmp>")
+val rxxmp = regex(r"(<xmp\b" + tagContent + r">)([\s\S]*?)</xmp>")
 
-public function normalizeSource( src : string ) : string {
-  val srcnl = if (src.contains('\r')) then src.replaceAll(regex(@"\r\n?"),"\n") else src
-  srcnl.replaceAll(regex(@"\t"), "    ") 
+pub fun normalizeSource( src : string ) : string {
+  val srcnl = if (src.contains('\r')) then src.replaceAll(regex(r"\r\n?"),"\n") else src
+  srcnl.replaceAll(regex(r"\t"), "    ") 
 }
 
 // Takes source markdown input and returns formatted html
-function markdownNormal( src0 : string, options0 : options = initialOptions0, fmt : formatter = FmtHtml ) : pure (string,options)
+fun markdownNormal( src0 : string, options0 : options = initialOptions0, fmt : formatter = FmtHtml ) : pure (string,options)
 {  
   // first normalize the input: all tabs to 4 spaces.
   val (options1,src) = parseMeta(options0,fmt,src0.normalizeSource)
@@ -63,14 +63,14 @@ function markdownNormal( src0 : string, options0 : options = initialOptions0, fm
   
   if (options.verbose>=4) then {
     trace("metadata: " + fmt.showFormatter)
-    options.metadata.foreach fun(md) {
+    options.metadata.foreach fn(md) {
       trace("  " + md.fst + ": " + md.snd.cutoff(80))
     }
     trace("parse blocks")
   }
   //val blocks = parseBlocks(src,options.citestyle,options.bench,options.pedantic )
 
-  if (options.citeAll) then log("aux",@"\citation{*}")
+  if (options.citeAll) then log("aux",r"\citation{*}")
   
   // parse definitions
   val icontext  = inlineContext(fmt,options.metadata.dict,
@@ -96,12 +96,12 @@ function markdownNormal( src0 : string, options0 : options = initialOptions0, fm
   if (options.verbose>=3) then trace("generate output")
 
   // log links, labels, and entities
-  if (fmt.isFmtHtml) {
-    fcontext.inlineContext.labels.list().foreach fun(elem) {
+  if (fmt.isFmtHtml) then {
+    fcontext.inlineContext.labels.list().foreach fn(elem) {
       val (name,label) = elem
       log("labels","{ \"name\": " + name.json + ", \"text\": " + label.labelText.json + ", \"caption\": " + label.labelCaption.json + " }" );
     }
-    fcontext.inlineContext.links.list().foreach fun(elem) {
+    fcontext.inlineContext.links.list().foreach fn(elem) {
       val (name,link) = elem
       log("links","{ \"name\": " + name.json + ", \"href\": " + link.href.json + ", \"title\": " + link.title.json + " }" );
     }
@@ -122,20 +122,20 @@ function markdownNormal( src0 : string, options0 : options = initialOptions0, fm
 }
 
 // Export initial options for JavaScript usage
-public val initialOptions0 = initialOptions();
+pub val initialOptions0 = initialOptions();
 
-public function initialOptions() {
+pub fun initialOptions() {
   return Options();
 }
 
-public function traceRuleHist() {
+pub fun traceRuleHist() {
   common/traceRuleHist()
 }
 
-function logMetadata( mdata : metadata ) {
-  mdata.foreach fun(kv) {
+fun logMetadata( mdata : metadata ) {
+  mdata.foreach fn(kv) {
     val (key,value) = kv;
-    if (!key.startsWith("~") && !key.startsWith(".") && !key.startsWith("#")) {
+    if (!key.startsWith("~") && !key.startsWith(".") && !key.startsWith("#")) then {
       log("entities", "{\"name\":" + key.json + ",\"value\":" + value.json + "}")
     }
   }
@@ -143,7 +143,7 @@ function logMetadata( mdata : metadata ) {
 
 
 // Create an ":inlineContext"
-function inlineContext( fmt : formatter, 
+fun inlineContext( fmt : formatter, 
                                metadata : dict<string>,
                                mathinfos : dict<mathinfo>,
                                embedinfos : dict<embedinfo>,
@@ -162,7 +162,7 @@ function inlineContext( fmt : formatter,
                   _ -> False
                 }
 
-  function pickx(f,g,h) {
+  fun pickx(f,g,h) {
     match(fmt) {
       FmtTex  -> if (isTex2) then h else g
       FmtHtml -> f

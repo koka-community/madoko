@@ -9,11 +9,10 @@
 // Running latex and bibtex
 module runLatex
 
-import std/string
-import std/regex
-import std/path
-import std/dict
-import std/env
+import std/text/regex
+import std/os/path
+import std/data/dict
+import std/os/env
 import common
 import options
 import storage
@@ -21,54 +20,54 @@ import process
 
 
 // normalize a file name: needed for latex 
-function norm( fname : string ) : string {
+fun norm( fname : string ) : string {
   fname.replaceAll("\\", "/");
 }
 
-public function runZip( files : list<string>, zipFile : string, opts : options, continue : (bool) -> <io|e> () ) : <io|e> () {
+pub fun runZip( files : list<string>, zipFile : string, opts : options, continue : (bool) -> <io|e> () ) : <io|e> () {
   opts.print("running zip to generate tex zip...")
   val outdir    = zipFile.dirname
-  function adjust( fname ) {
+  fun adjust( fname ) {
     val name = if (fname.startsWith(outdir)) then fname.substr(outdir.length + 1) else fname
     name.checkSandbox.quote
   }
   val zipCmd = opts.zip.quote + " -9 " + zipFile.adjust + " " + files.map(adjust).join(" ")
   tryUnlinkSync(zipFile.checkSandbox)
   opts.print("> " + zipCmd)
-  system(zipCmd, fun(err:int,stdout:string,stderr:string) {
-    if (err!=0) {
+  system(zipCmd, fn(err:int,stdout:string,stderr:string) {
+    if (err!=0) then {
       opts.printErr("error while running: > " + zipCmd)
       val allout = stdout + stderr
       opts.printErr("error: zip:\n" + allout.indent(2))
     }
     else {
-      if(opts.verbose>=1 && !(stdout=="" && stderr=="")) opts.printErr(stdout + stderr)
+      if(opts.verbose>=1 && !(stdout=="" && stderr=="")) then opts.printErr(stdout + stderr)
     }
     continue(err!=0)
   },opts.processTimeout,outdir)
 }
 
-public function runBibtex( bibFiles : list<string>, opts : options, continue : bool -> <io|e> ()) : <io|e> () {
+pub fun runBibtex( bibFiles : list<string>, opts : options, continue : bool -> <io|e> ()) : <io|e> () {
   match(bibFiles) {
     Nil -> continue(False)
     Cons(bibFile,rest) -> {
-      runBibtex1( bibFile, opts, fun(err) {
-        runBibtex( rest, opts, if (err) then fun(_) { continue(True) } else continue )
+      runBibtex1( bibFile, opts, fn(err) {
+        runBibtex( rest, opts, if (err) then fn(_) { continue(True) } else continue )
       })
     }
   }
 }
 
-public function runBibtex1( bibFile : string, opts : options, continue : bool -> <io|e> ()) : <io|e> () {
+pub fun runBibtex1( bibFile : string, opts : options, continue : bool -> <io|e> ()) : <io|e> () {
   opts.print("running bibtex to generate bibliography...")
   val xbibFile = checkSandbox(bibFile)
   val bibtexCmd = opts.bibtex.quote + " " + xbibFile.basename.quote
   opts.print("> " + bibtexCmd,3)
-  system(bibtexCmd, fun(err:int,stdout:string,stderr:string) {
-    if (err!=0) {
+  system(bibtexCmd, fn(err:int,stdout:string,stderr:string) {
+    if (err!=0) then {
       opts.printErr("error while running: > " + bibtexCmd)
-      system(opts.bibtex.quote + " -version") fun(errx:int,stdoutx,stderrx) {
-        if (errx!=0) {
+      system(opts.bibtex.quote + " -version") fn(errx:int,stdoutx,stderrx) {
+        if (errx!=0) then {
           opts.printErr("error: could not find bibtex: \"" + bibtexCmd + "\"\n" +
                         "\n  hint: Set the 'BibTeX: ...' key or give the '--bib=<cmd>' command line option.\n")
         }
@@ -82,7 +81,7 @@ public function runBibtex1( bibFile : string, opts : options, continue : bool ->
                                         "\n  hint: perhaps put the file in the document directory and use the" + 
                                         "\n        'Bib style: " + cap.groups[1].noext + ".bst' metadata (with the '.bst' extension).\n");
           }
-          allout.findAll(rxBibtexError).foreach( fun(cap) {
+          allout.findAll(rxBibtexError).foreach( fn(cap) {
             opts.printErr("error: source line: " + cap.groups[3] + ":" + cap.groups[2] +
                           "\n  " + (cap.groups[1] + cap.groups[4].unindent).indent(2) + "\n" )
           })
@@ -91,17 +90,17 @@ public function runBibtex1( bibFile : string, opts : options, continue : bool ->
       }
     }
     else {
-      if(opts.verbose>=1 && !(stdout=="" && stderr=="")) opts.printErr(stdout + stderr)
+      if(opts.verbose>=1 && !(stdout=="" && stderr=="")) then opts.printErr(stdout + stderr)
       continue(False)
     }
   },opts.processTimeout,bibFile.dirname)
 }
 
-val rxBibtexLineinfo= @"---line *(\d+) *of file *(.*)"
-val rxBibtexNoStyle = regex(@"^ *I couldn't open style file *(.*)\s*" + rxBibtexLineinfo, multiline=True)
-val rxBibtexError   = regex(@"^ *(.+?)" + rxBibtexLineinfo + @"((?:\s*:.*)*)", multiline=True)
+val rxBibtexLineinfo= r"---line *(\d+) *of file *(.*)"
+val rxBibtexNoStyle = regex(r"^ *I couldn't open style file *(.*)\s*" + rxBibtexLineinfo, multiline=True)
+val rxBibtexError   = regex(r"^ *(.+?)" + rxBibtexLineinfo + r"((?:\s*:.*)*)", multiline=True)
 
-public function runPdfLaTeX( srcName : string, texFile : string, opts : options, content : string, continue : (int) -> io () ) {
+pub fun runPdfLaTeX( srcName : string, texFile : string, opts : options, content : string, continue : (int) -> io () ) {
   opts.print("running " + opts.getPdfLatex.stemname + " to generate pdf...")
   val notfound = "set the 'Pdf Latex: <cmd>' key in the metadata?"
   runLaTeX(srcName, texFile, opts.getPdfLatex, "", opts, content, notfound, 0, True, continue )  
@@ -120,7 +119,7 @@ val latexSandboxEnv = [
   ("parse_first_line","f"),
 ]
 
-public function runLaTeX( srcFile : string, texFile : string, texCmd : string, extraArgs : string,
+pub fun runLaTeX( srcFile : string, texFile : string, texCmd : string, extraArgs : string,
                     opts : options, 
                     content : string,
                     notfound : string,
@@ -136,21 +135,21 @@ public function runLaTeX( srcFile : string, texFile : string, texCmd : string, e
                        (if (opts.sandbox) then " --no-parse-first-line --no-shell-escape" else "") + // note: also need `openin_any:p` and `openout_any:p`: pass through environment instead
                        " " + texFile.norm.quote 
 
-  if (runCount==0 && opts.rebuild) {
+  if (runCount==0 && opts.rebuild) then {
     tryUnlinkSync(texFile.changeExt(".aux"))
   }
   opts.print("> " + latexCmd,3)
   
-  system(latexCmd, fun(err:int,stdout:string,stderr:string) {
+  system(latexCmd, fn(err:int,stdout:string,stderr:string) {
     val logout = readTextFileDef(texFile.changeExt(".log"),"")
-    if (err!=0) {
+    if (err!=0) then {
       opts.printErr("error while running: \n> " + latexCmd)
       //trace("error code: " + err.show + "\n" + stdout + stderr)
       //println(stdout + stderr)
-      system(texCmd.quote + " -version") fun(errx:int,stdoutx,stderrx) {
-        if (errx!=0) {
+      system(texCmd.quote + " -version") fn(errx:int,stdoutx,stderrx) {
+        if (errx!=0) then {
           opts.printErr("error: could not find program: \"" + texCmd + "\"")
-          if (notfound != "") opts.printErr(notfound)
+          if (notfound != "") then opts.printErr(notfound)
         }
         else {
           val errmsg = "error: latex:\n" + stdout + stderr
@@ -184,7 +183,7 @@ public function runLaTeX( srcFile : string, texFile : string, texCmd : string, e
       }
     }
     else {
-      if (runCount <= 2 && logout.contains(rxLatexRerun)) {
+      if (runCount <= 2 && logout.contains(rxLatexRerun)) then {
         opts.print("rerun to resolve references...")
         runLaTeX( srcFile, texFile, texCmd, extraArgs, opts, content, notfound, runCount+1, showWarnings, continue)
       }
@@ -199,20 +198,20 @@ public function runLaTeX( srcFile : string, texFile : string, texCmd : string, e
    std/env/env.list + latexEnv + (if (opts.sandbox) then latexSandboxEnv else [])
   )
 } 
-val rxLatexErr = regex(@"(?:^! LaTeX Error:.*|^\*\* ERROR .*|^(?:!|Runaway argument\?))[\s\S]*?(?=\r?\n\r?\n\r?\n|^\s*(?:Here is how much of \w*TeX's memory you used:|The control sequence))",multiline=True,ignoreCase=True)
+val rxLatexErr = regex(r"(?:^! LaTeX Error:.*|^\*\* ERROR .*|^(?:!|Runaway argument\?))[\s\S]*?(?=\r?\n\r?\n\r?\n|^\s*(?:Here is how much of \w*TeX's memory you used:|The control sequence))",multiline=True,ignoreCase=True)
 
-val rxLatexRerun = regex(@"^((Package|Latex) .*?warning\b.*?|\(\w+\) +)Rerun\b",multiline=True,ignoreCase=True)
+val rxLatexRerun = regex(r"^((Package|Latex) .*?warning\b.*?|\(\w+\) +)Rerun\b",multiline=True,ignoreCase=True)
 
-function nicifyLatexErr( err :string) : string {
+fun nicifyLatexErr( err :string) : string {
   match(err.find(rxLatexSubErr)) {
     Nothing   -> err
     Just(cap) -> cap.matched + "\n"
   }
 }
-val rxLatexSubErr = regex(@"The font ""[^""\n\r]*"" cannot be found\.",multiline=True,ignoreCase=True)
+val rxLatexSubErr = regex(r#"The font "[^"\n\r]*"" cannot be found\."#,multiline=True,ignoreCase=True)
 
 
-function findLatexLineNo( texerr : string ) : maybe<(int,string)> {
+fun findLatexLineNo( texerr : string ) : maybe<(int,string)> {
   match(texerr.find(rxLatexLineNum)) {
     Nothing   -> Nothing
     Just(cap) -> match( cap.groups[1].parseInt ) {
@@ -221,16 +220,16 @@ function findLatexLineNo( texerr : string ) : maybe<(int,string)> {
                  }
   }
 }
-val rxLatexLineNum = regex(@"(?:^|\n)l\.(\d+) +[\s\S]*?(?=\r?\n\r?\n|$)")
+val rxLatexLineNum = regex(r"(?:^|\n)l\.(\d+) +[\s\S]*?(?=\r?\n\r?\n|$)")
 
-function findLatexLine( src : string, lineNo, texSrc : string ) : maybe<string> {
-  val searchLines = texSrc.lines.list.take(lineNo-1).reverse
+fun findLatexLine( src : string, lineNo, texSrc : string ) : maybe<string> {
+  val searchLines = texSrc.lines.list.take(lineNo - 1).reverse
   //trace("latex lineno: " + lineNo.show + "\n" + searchLines.join("\n") + "\n\n")
   findLatexLineData(0, searchLines )
 }
-val rxLatexEndSnippet = regex(@"\\end{md(Inline|Display)?Snippet}")
+val rxLatexEndSnippet = regex(r"\\end{md(Inline|Display)?Snippet}")
 
-function findLatexLineData( delta : int, lines : list<string> ) : maybe<string> {
+fun findLatexLineData( delta : int, lines : list<string> ) : maybe<string> {
   match(lines) {
     Nil -> Nothing
     Cons(line,rest) -> {
@@ -251,12 +250,12 @@ function findLatexLineData( delta : int, lines : list<string> ) : maybe<string> 
     }
   }
 }
-val rxLineData    = regex( @"^(?:[^\\%]|\\.)*% *(?:mdk-)?data-line=\{([^\}]*)\} *$" )
-val rxLineNo      = regex( @"^([^:]*:)?(\d+)$" )
-val rxEndComment  = regex( @"^(?:[^\\%]|\\.)*%mdk.*$" )
+val rxLineData    = regex( r"^(?:[^\\%]|\\.)*% *(?:mdk-)?data-line=\{([^\}]*)\} *$" )
+val rxLineNo      = regex( r"^([^:]*:)?(\d+)$" )
+val rxEndComment  = regex( r"^(?:[^\\%]|\\.)*%mdk.*$" )
 
 
-function findLatexPackage( logout : string, pkgs : list<string> = [] ) : maybe<string> {
+fun findLatexPackage( logout : string, pkgs : list<string> = [] ) : maybe<string> {
   match(logout.find(rxPackageLine)) {
     Nothing -> {
       match(pkgs) {
@@ -266,7 +265,7 @@ function findLatexPackage( logout : string, pkgs : list<string> = [] ) : maybe<s
     }
     Just(cap) -> {
       val newpkgs = 
-        if (cap.groups[6] != "") {
+        if (cap.groups[6] != "") then {
           // loaded))
           pkgs.drop(cap.groups[6].count(")"))
         }
@@ -286,21 +285,21 @@ function findLatexPackage( logout : string, pkgs : list<string> = [] ) : maybe<s
   }
 }
 
-val rxPackage   = @"\((?:\./)?([^\)\n\r\t]+) *(?:(\)+) *)?"
-val rxPackageEnd = @"(\)+) *(?:" + rxPackage + @")?"
-val rxPackageEndLoaded = @"[^\(\r\n]*?((?: loaded\)+)+)"  // xypic package suffers from this
+val rxPackage   = r"\((?:\./)?([^\)\n\r\t]+) *(?:(\)+) *)?"
+val rxPackageEnd = r"(\)+) *(?:" + rxPackage + r")?"
+val rxPackageEndLoaded = r"[^\(\r\n]*?((?: loaded\)+)+)"  // xypic package suffers from this
 val rxPackageStart = rxPackage
-val rxPackageLine = regex(@"^(?:\] *)?(?:" + rxPackageStart + "|" + rxPackageEnd + "|" + rxPackageEndLoaded + @")(?=$| *\[\d+(?:$|\]))", multiline=True)
+val rxPackageLine = regex(r"^(?:\] *)?(?:" + rxPackageStart + "|" + rxPackageEnd + "|" + rxPackageEndLoaded + r")(?=$| *\[\d+(?:$|\]))", multiline=True)
 
 
-public function latexStrip( s : string ) : string
+pub fun latexStrip( s : string ) : string
 {
   s.replaceAll(rxStrip,"")
 }
 
-val rxStrip = regex(@"(\\[\w/\-\r\n]*(\[[^\]\r\n]*\])?|\^\^.|'\w*|\}\{[lrct]\}|\]\{[^\]\r\n]*\}|[^a-zA-Z])+") // ;""!\*()/\+=/,~:
+val rxStrip = regex(r"(\\[\w/\-\r\n]*(\[[^\]\r\n]*\])?|\^\^.|'\w*|\}\{[lrct]\}|\]\{[^\]\r\n]*\}|[^a-zA-Z])+") // ;""!\*()/\+=/,~:
 
-public function latexFindLineByMatch( texLine : string, source : string ) : maybe<string> {
+pub fun latexFindLineByMatch( texLine : string, source : string ) : maybe<string> {
   val stripLine = texLine.latexStrip.substr(0,16) // some arbitrary length... seems to work well in practice
   if (stripLine.length < 3) then Nothing else {
     match (source.findLines(stripLine)) {
@@ -308,8 +307,8 @@ public function latexFindLineByMatch( texLine : string, source : string ) : mayb
       _ -> Nothing      
     }
     /*
-    ilines = source.lines.list.mapIndexed(fun(idx,line) { (idx,line) })
-    match(ilines.filter(fun(iline){ iline.snd.latexStrip.contains(stripLine) })) {
+    ilines = source.lines.list.mapIndexed(fn(idx,line) { (idx,line) })
+    match(ilines.filter(fn(iline){ iline.snd.latexStrip.contains(stripLine) })) {
       Cons(iline,rest) -> Just((iline.fst+1).show + (if (rest.isNil) then "" else " (?)"))
       _ -> Nothing
     }
@@ -317,14 +316,14 @@ public function latexFindLineByMatch( texLine : string, source : string ) : mayb
   }
 }
 
-function findLines( source : string, pat : string ) : list<int> {
-  val slines  = source.lines.list.map(fun(line) { line.latexStrip })
-  val slens   = slines.map(fun(s){ s.length })
+fun findLines( source : string, pat : string ) : list<int> {
+  val slines  = source.lines.list.map(fn(line) { line.latexStrip })
+  val slens   = slines.map(fn(s){ s.length })
   val offsets = findOffsets( slines.join, pat )
-  offsets.map fun(ofs) {
+  offsets.map fn(ofs) {
     var total := 0
     var current := 1
-    slens.foreachUntil fun(len) {
+    slens.foreachUntil fn(len) {
       total := total + len
       if (total > ofs) then return Just(current) 
       current := current + 1
@@ -334,7 +333,7 @@ function findLines( source : string, pat : string ) : list<int> {
   }
 }
 
-function findOffsets( source : string, pat : string ) : list<int> {
+fun findOffsets( source : string, pat : string ) : list<int> {
   val i0 = source.indexOf(pat)
   val i1 = source.lastIndexOf(pat)
   if (i0 < 0) then []
@@ -342,10 +341,10 @@ function findOffsets( source : string, pat : string ) : list<int> {
   else [i0,i1]
 }
 
-function latexShowWarnings(texFile:string,logout:string, content:string,opts:options) : io () 
+fun latexShowWarnings(texFile:string,logout:string, content:string,opts:options) : io () 
 {
   if (opts.verbose<2) then {
-    if (opts.verbose>=1) {
+    if (opts.verbose>=1) then {
       match(logout.find(rxLatexOutput)) {
         Just(cap) -> opts.print(cap.matched,1)
         Nothing -> ()
@@ -354,12 +353,12 @@ function latexShowWarnings(texFile:string,logout:string, content:string,opts:opt
     return ()
   }
 
-  val warnings = logout.findAll(rxLatexWarning).list.map(fun(cap) { (cap.index,cap.matched) })
+  val warnings = logout.findAll(rxLatexWarning).list.map(fn(cap) { (cap.index,cap.matched) })
   if (warnings.isNil) then return () 
 
   val texlines = readTextFileDef(texFile,"").lines
   println("")
-  warnings.foreach fun(iw) {
+  warnings.foreach fn(iw) {
     val (index,warning0) = iw
     val warning = warning0.replace(rxLatexBrackets,"")
     val warn = match(warning.find(rxLatexLine)) {
@@ -398,37 +397,37 @@ function latexShowWarnings(texFile:string,logout:string, content:string,opts:opt
   }
   match(logout.find(rxLatexOutput)) {
     Just(cap) -> opts.printErr(cap.matched)
-    Nothing   -> if (warnings.isCons) opts.printErr("end of latex warnings.")  
+    Nothing   -> if (warnings.isCons) then opts.printErr("end of latex warnings.")  
   }
 }
 
-val rxLatexLine = regex(@"lines?[\s:]*(\d+).*(?:\r?\n([\s\S]*))?") 
-val rxLatexOutputActive = regex(@"\output is active\s*$") // only match single line 
-val rxLatexPage = regex(@"\s\[(\d+)\s*\]")
-val rxLatexOutput = regex(@"^Output written on .*", multiline=True)
-val rxLatexBrackets = regex(@"(\s|[\[\]])+$")
-val rxLatexWarning = regex(@"^(Overfull|Underfull|[\w ]*[Ww]arning:)[\s\S]*?\n *$", multiline=True)
+val rxLatexLine = regex(r"lines?[\s:]*(\d+).*(?:\r?\n([\s\S]*))?") 
+val rxLatexOutputActive = regex(r"\output is active\s*$") // only match single line 
+val rxLatexPage = regex(r"\s\[(\d+)\s*\]")
+val rxLatexOutput = regex(r"^Output written on .*", multiline=True)
+val rxLatexBrackets = regex(r"(\s|[\[\]])+$")
+val rxLatexWarning = regex(r"^(Overfull|Underfull|[\w ]*[Ww]arning:)[\s\S]*?\n *$", multiline=True)
 
-function latexFindLine( src : vector<string>, lineNo : int, direction : int = 0 ) : div string
+fun latexFindLine( src : vector<string>, lineNo : int, direction : int = 0 ) : div string
 {
   val line = latexGetLine(src,lineNo)
-  if (line.contains(rxEnd) && direction <= 0) {
-    latexFindLine(src,lineNo-1,~1)
+  if (line.contains(rxEnd) && direction <= 0) then {
+    latexFindLine(src,lineNo - 1,~1)
   }
-  elif (line.contains(rxBegin) && direction >= 0) {
-    latexFindLine(src,lineNo+1,1)
+  elif (line.contains(rxBegin) && direction >= 0) then {
+    latexFindLine(src,lineNo + 1,1)
   }
   else {
     line
   }
 }
 
-val rxEnd = regex(@"^\\end|^\s*(\\?\}\s*)*$",multiline=True)
-val rxBegin = regex(@"^\\begin|^\s*(\\?\{})*$",multiline=True)
+val rxEnd = regex(r"^\\end|^\s*(\\?\}\s*)*$",multiline=True)
+val rxBegin = regex(r"^\\begin|^\s*(\\?\{})*$",multiline=True)
 
-function latexGetLine( src : vector<string>, lineNo : int ) : string
+fun latexGetLine( src : vector<string>, lineNo : int ) : string
 {
   if (lineNo <= 0 || lineNo > src.length) then "" else {
-    catch( { src[lineNo-1] }, fun(_) { "" })
+    catch( { src[lineNo - 1] }, fn(_) { "" })
   }
 }

@@ -7,25 +7,25 @@
 ---------------------------------------------------------------------------*/
 module runcsl
 
-import std/path
+import std/os/path
 import texParser
 
-external import {
+extern import {
   js csl "./csl-madoko"
 }
 
 
-public struct fileinfo( 
+pub struct fileinfo( 
   filename: string,
   contents: string
 )
 
-public struct citeinfo(
+pub struct citeinfo(
   id: string,
   lineinfo: string
 )
 
-public struct cslresult(
+pub struct cslresult(
   bibliography: string,
   bib         : string,
   warnings    : string,
@@ -34,7 +34,7 @@ public struct cslresult(
 )
 
 
-public function runCsl( 
+pub fun runCsl( 
   citations : list<citeinfo>, bibs : list<fileinfo>, bibstyle : fileinfo, 
   madokoStyle : fileinfo, localeStyle : fileinfo, id : string, attrs0 : string ) : cslresult 
 {
@@ -42,10 +42,10 @@ public function runCsl(
   val attrs = "data-style:'" + bibstyle.filename.stemname + "'; " + attrs0
   makeBiblX( citations.unlist, 
               bibs.unlist, bibstyle, madokoStyle, localeStyle, 
-              fun(tex) { parseTex(tex) }, preid, attrs )  
+              fn(tex) { parseTex(tex) }, preid, attrs )  
 }
 
-external makeBiblX( citations : primarray<citeinfo>, bibtexs: primarray<fileinfo>, 
+extern makeBiblX( citations : primarray<citeinfo>, bibtexs: primarray<fileinfo>, 
                     bibstyle : fileinfo, 
                     madokoStyle : fileinfo, localeStyle : fileinfo,
                     convertTex : (string) -> string,
