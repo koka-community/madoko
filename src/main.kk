@@ -28,27 +28,27 @@ pub fun main() : io () {
 pub fun test( s : string = "code_blocks", moreargs = "" ) {
   //main("test/code_blocks.text")
   val root = if (s.contains(path/sep)) then combine("test",s) else combine(["test","new",s])
-  val input  = root + ".text"
+  val input  = root ++ ".text"
   val outputDir = "test/out"
-  val target = root + ".html"
+  val target = root ++ ".html"
 
-  markdownFiles("-v --tex --installdir=src --odir=" + outputDir + " " + moreargs + " " + input)
+  markdownFiles("-v --tex --installdir=src --odir=" ++ outputDir ++ " " ++ moreargs ++ " " ++ input)
     fn(outText,_input,output,_options) {
-      //trace("-----\n" + outText + "\n-----")
+      //trace("-----\n" ++ outText ++ "\n-----")
       val targetText = target.readTextFileDef("")
       val outStrip = outText.replaceAll(regex(r"\s"),"") // .replaceAll(regex(r"class=""indent"""),"")
       val targetStrip = targetText.replaceAll(regex(r"\s"),"")
       if (outStrip != targetStrip) then {
         trace("\n*** test failed ***")
-        //trace(targetText + "\n***")
+        //trace(targetText ++ "\n***")
 
         var i := 0;
         while { outStrip[i] == targetStrip[i] } { i := i+1 }
-        trace("position: " + i.show)
+        trace("position: " ++ i.show)
         val preN = 20
         i := max(0, i-preN)
-        trace("inferred: " + outStrip.substr(i,preN) + " " + outStrip.substr(i+preN,40) + " ...")
-        trace("expected: " + targetStrip.substr(i,preN) + " " + targetStrip.substr(i+preN,40) + "...")
+        trace("inferred: " ++ outStrip.substr(i,preN) ++ " " ++ outStrip.substr(i+preN,40) ++ " ...")
+        trace("expected: " ++ targetStrip.substr(i,preN) ++ " " ++ targetStrip.substr(i+preN,40) ++ "...")
         trace("***")
       }
       else {
@@ -70,11 +70,11 @@ pub fun markdownFiles(args : string, action : (string,string,string,options) -> 
       }
 
       opts.inputs.foreach fn(input0) {
-        val input   = if (input0.extname=="") then input0 + ".mdk" else input0
+        val input   = if (input0.extname=="") then input0 ++ ".mdk" else input0
         val outName = outputName(input,opts)
-        if (opts.options.verbose > 0) then println("process: " + input + " -> " + outName )
+        if (opts.options.verbose > 0) then println("process: " ++ input ++ " -> " ++ outName )
         match (input.tryReadTextFile()) {
-          Left -> println("error: unable to read: " + input )
+          Left -> println("error: unable to read: " ++ input )
           Right(content) -> {
             processContent(input, outName, content, opts, True, runners, action)
           }

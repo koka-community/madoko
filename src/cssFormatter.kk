@@ -45,7 +45,7 @@ pub fun cssExpandKeys( kvs0 : dict<string> ) : dict<string> {
     kvs.cssExpandTRBL("border-color"),
     kvs.cssExpandTRBL("border-radius"),    
   ].concat 
-  xs.dict + kvs 
+  xs.dict ++ kvs 
 }
 
 fun cssExpandTRBL( kvs : dict<string>, key : string  ) : list<(string,string)> {
@@ -60,10 +60,10 @@ fun cssExpandTRBL( kvs : dict<string>, key : string  ) : list<(string,string)> {
                  [top,hor,bot] -> [top,hor,bot]
                  res -> res
       }
-      val ks = ["top","right","bottom","left"].map(fn(side) { pre + "-" + side + post })
+      val ks = ["top","right","bottom","left"].map(fn(side) { pre ++ "-" ++ side ++ post })
       val zs = zip(ks,vs)
       if (zs.length == 4) then zs else {
-        warning("Unable to parse CSS values: " + value)
+        warning("Unable to parse CSS values: " ++ value)
         []
       }
     }
@@ -80,18 +80,18 @@ fun cssExpandMultiKeys( kvs : dict<string> ) : dict<string> {
     kvs.cssExpandBorder("-bottom"),
     kvs.cssExpandBorder("-left"),
   ] 
-  xss.concat.dict + kvs
+  xss.concat.dict ++ kvs
 }
 
 fun cssExpandBorder( kvs : dict<string>, post = "" ) : list<(string,string)> {
-  match(kvs["border" + post]) {
+  match(kvs["border" ++ post]) {
     Nothing -> []
     Just(value) -> {
       val terms = cssSplitValues(value)
       terms.map( fn(term) {
-        if (term.cssIsLength) then ("border" + post + "-width",term)
-        elif (term.cssIsColor) then ("border" + post + "-color",term)
-        else ("border" + post + "-style",term)
+        if (term.cssIsLength) then ("border" ++ post ++ "-width",term)
+        elif (term.cssIsColor) then ("border" ++ post ++ "-color",term)
+        else ("border" ++ post ++ "-style",term)
       })
     }
   }
@@ -102,7 +102,7 @@ pub fun cssIsLength( term : string ) : bool {
 }
 val regNum = r"([\-\+]?(?:\d+|\d*\.\d+)(?:[eE]\d+)?)"
 val rxNum = regex(regNum)
-val rxLen = regex(regNum + r"(em|ex|ch|rem|vh|vw|vmin|vmax|px|mm|cm|in|pt|pc)\b")
+val rxLen = regex(regNum ++ r"(em|ex|ch|rem|vh|vw|vmin|vmax|px|mm|cm|in|pt|pc)\b")
 
 
 fun cssIsColor( term : string ) : bool {
@@ -116,13 +116,13 @@ pub fun cssSplitValues( s : string ) : list<string> {
 }
 
 val rxEsc   = r"\\(?:[0-9a-fA-F]{1,6}\s*|.)"
-val rxCssTerm = regex(r"(?:'(?:[^\n\\']|" + rxEsc + r#")*'|"(?:[^\n\\"]|"# + rxEsc + r#")*"|-?[a-zA-Z_]\w*\([^\)]*\)|(?:[^'"\\\s]|"# + rxEsc + ")+)")
+val rxCssTerm = regex(r"(?:'(?:[^\n\\']|" ++ rxEsc ++ r#")*'|"(?:[^\n\\"]|"# ++ rxEsc ++ r#")*"|-?[a-zA-Z_]\w*\([^\)]*\)|(?:[^'"\\\s]|"# ++ rxEsc ++ ")+)")
 
 // Split comma seperated CSS values (like `font-family`)
 pub fun cssSplitList( s : string ) : list<string> {
   s.findAll(rxCssListTerm).list.map(fn(cap) { cap.matched.unquote })
 }
-val rxCssListTerm = regex(r"(?:'(?:[^\n\\']|" + rxEsc + r#")*'|"(?:[^\n\\"]|"# + rxEsc + r#")*"|[\-a-zA-Z_/](?:[\w\-\t \.\@/]|"# + rxEsc + r")*)")
+val rxCssListTerm = regex(r"(?:'(?:[^\n\\']|" ++ rxEsc ++ r#")*'|"(?:[^\n\\"]|"# ++ rxEsc ++ r#")*"|[\-a-zA-Z_/](?:[\w\-\t \.\@/]|"# ++ rxEsc ++ r")*)")
 
 
 
@@ -130,7 +130,7 @@ pub fun braced( s : string ) : string {
   if (s.isBraced) then s 
   else {
     val nl = if (s.contains(rxEndComment)) then "\n" else ""
-    "{" + s + nl + "}"
+    "{" ++ s ++ nl ++ "}"
   } 
 }
 val rxEndComment = regex(r"(^|[^\\])%.*$")
@@ -140,18 +140,18 @@ pub fun isBraced( s : string ) : bool {
 }
 
 pub fun cssColorCmd( v : string ) : string {
-  if (v=="") then "" else "\\mdcolor{" + v.cssColor + "}"
+  if (v=="") then "" else "\\mdcolor{" ++ v.cssColor ++ "}"
 }
 
 pub fun cssColorArg( v : string ) : string {
-  if (v=="") then "{}" else "{" + v.cssColor + "}"
+  if (v=="") then "{}" else "{" ++ v.cssColor ++ "}"
 }
 
 pub fun cssColor( v0 : string ) : string {
   val v = v0.cssNormalize.toLower
   match(v.find(rxRgbX)) {
     Just(cap) -> {
-      val rgbx = (1,2,3).map( fn(i) { if (cap.groups[4]=="") then cap.groups[i] + cap.groups[i] else cap.matched.substr(1 + 2*(i - 1), 2) } )
+      val rgbx = (1,2,3).map( fn(i) { if (cap.groups[4]=="") then cap.groups[i] ++ cap.groups[i] else cap.matched.substr(1 + 2*(i - 1), 2) } )
       val rgb  = rgbx.map( fn(s) { s.parseIntDefault(0,hex=True) } )
       cssRgb(rgb)
     }
@@ -171,7 +171,7 @@ pub fun cssColor( v0 : string ) : string {
           Nothing -> match(cssNamedColors[v]) { 
             Just(clr) -> clr
             Nothing   -> {
-              warning("unknown named css color: " + v)
+              warning("unknown named css color: " ++ v)
               v
             }
           }
@@ -188,20 +188,20 @@ fun cssRgb(rgb : (int,int,int) ) : string {
   val (r,g,b) = rgb
   if (r==0 && g==0 && b==0) then "black"
   elif (r>=255 && g>=255 && b>=255) then "white"
-  else "\\#" + r.hex + g.hex + b.hex
+  else "\\#" ++ r.hex ++ g.hex ++ b.hex
 
   /*
   fun mix(i,clr) {
-    clr + "," + (i.min(255).max(0)).show
+    clr ++ "," ++ (i.min(255).max(0)).show
   }
   val (r,g,b) = rgb
   if (r==0 && g==0 && b==0) then "black"
   elif (r>=255 && g>=255 && b>=255) then "white"
   elif (r==g && g==b && r >= 0 && r <= 255) then {
-    ("rgb,255:" + r.mix("white")).braced
+    ("rgb,255:" ++ r.mix("white")).braced
   }
   else {
-    ("rgb,255:" + [r.mix("red"), g.mix("green"), b.mix("blue")].join(";")).braced
+    ("rgb,255:" ++ [r.mix("red"), g.mix("green"), b.mix("blue")].join(";")).braced
   }
   */
 }
@@ -220,11 +220,11 @@ pub fun cssPercentage( v0 : string ) : string {
   if (v.endsWith("%")) then {
     match(v.substr(0,v.length - 1).parseInt) {
       Nothing -> {
-        warning("illegal percentage: " + v)
+        warning("illegal percentage: " ++ v)
         v
       }
       Just(i) -> {
-        (i/100).show + "." + (i%100).show.fill(2,'0')
+        (i/100).show ++ "." ++ (i%100).show.fill(2,'0')
       }
     }
   }
@@ -240,23 +240,23 @@ pub fun cssWidth( v0 : string, auto : string = "", percOf : string = "width", de
   match(v.find(rxPerc)) {
     Just(cap) -> {
       val perc = cap.groups[1].parseInt().maybe(100,id).double / 100.0
-      "\\dim" + percOf + perc.showFixed(2).braced
+      "\\dim" ++ percOf ++ perc.showFixed(2).braced
     }
     Nothing -> match(v.find(rxLen)) {
       Just(cap) -> {
         if (cssUnits.containsKey(cap.groups[2])) 
-         then "\\dim" + cap.groups[2] + cap.groups[1].braced
+         then "\\dim" ++ cap.groups[2] ++ cap.groups[1].braced
          else cssValue(v)
       }
       Nothing -> match(v.find(rxNum)) {
         Just -> {
           if (cssUnits.containsKey(defunit))
-           then "\\dim" + defunit + cssValue(v).braced
+           then "\\dim" ++ defunit ++ cssValue(v).braced
            else cssValue(v) + defunit
         }
         Nothing -> 
           if (v=="auto") then auto 
-          elif (v=="normal") then "1" + defunit
+          elif (v=="normal") then "1" ++ defunit
           elif (v=="available") then "\\dimavailable"
           else cssValue(v)
       }

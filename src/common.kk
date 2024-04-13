@@ -15,11 +15,11 @@ import std/os/path
 
 // Warning messages get logged
 pub fun warning( message : string, logname : string = "warning" ) : () {
-  log(logname,"  warning: " + message)
+  log(logname,"  warning: " ++ message)
 }
 
 pub fun logLocation( lineInfo: string, logname : string = "warning" ) : () {
-  log(logname,"  location: " + lineInfo)
+  log(logname,"  location: " ++ lineInfo)
 }
 
 pub type peano {
@@ -46,9 +46,9 @@ pub fun json(s : string) : string {
     elif (c=='"') then "\\\""
     elif (c=='\\') then "\\\\"
     elif (c >= ' ' && c <= '~') then c.string
-    else "\\u" + c.int.showHex(4)
+    else "\\u" ++ c.int.showHex(4)
   }
-  return "\"" + cs.join + "\""
+  return "\"" ++ cs.join ++ "\""
 }
 
 /* --------------------------------------
@@ -113,13 +113,13 @@ pub fun matchRules( rules : grammar<a,c>, contxt : c, src : string, def : string
     Cons(rule,rulesNext) -> {
       match (src.find(rule.regex)) {
         Just(cap) -> {
-          //if (rule.name[0] != '.') then trace("match: " + rule.name.fill(12) + ": " + cap.matched.show )
+          //if (rule.name[0] != '.') then trace("match: " ++ rule.name.fill(12) ++ ": " ++ cap.matched.show )
           // Uncomment the next line to get a histogram of rule matches
           // ruleInc(rule.name)
           ((rule.action)(cap,contxt), cap.next, cap.matched)//src.substr(cap.next)) 
         }
         Nothing -> {
-          //stat("fail-" + rule.name)
+          //stat("fail-" ++ rule.name)
           matchRules(rulesNext,contxt,src,def)
         }
       }
@@ -143,7 +143,7 @@ pub fun traceRuleHist() {
   unsafeTotal {
     ruleHist.freeze.list.foreach fn(kv) {
       val (rule,i) = kv
-      trace( rule.align(20) + ": " + i.show)
+      trace( rule.align(20) ++ ": " ++ i.show)
     }
   }
 }
@@ -184,7 +184,7 @@ pub fun translateLine( lineInfos: lineMap, lineNo : int ) : string {
        then lineNo.show
       elif (lineNo >= line + span)
        then translateLine( rest, lineNo - (span - 1))
-       else line.show + ";" + fileName + ":" + translateLine(include,(lineNo - line) + start) 
+       else line.show ++ ";" ++ fileName ++ ":" ++ translateLine(include,(lineNo - line) + start) 
     }
   }
 }
@@ -224,7 +224,7 @@ pub fun show( cm : citemode) : string {
 }
 
 pub fun show( cs : citestyle ) : string {
-  cs.mode.show + ":" + (if (cs.sort) then "sort" else "nosort") + ":" +
+  cs.mode.show ++ ":" ++ (if (cs.sort) then "sort" else "nosort") ++ ":" +
    [cs.open,cs.close,cs.citesep,cs.aysep,cs.yysep].map(show).join(",")
 }
 
@@ -248,7 +248,7 @@ pub fun parseCiteStyleDef( text : string, def : citestyle = citeNumeric ) : cite
   match(parseCiteStyle(text)) {
     Just(cs) -> cs
     Nothing  -> {
-      warning( "unrecognized citation style: " + text)
+      warning( "unrecognized citation style: " ++ text)
       def
     }
   }
@@ -285,9 +285,9 @@ pub fun parseCiteStyle( text : string ) : maybe<citestyle> {
 
 
 val rxVal      = r#"\s*("[^"]*"|'[^']*'|[^\s,;'"]*)\s*"#
-val rxValOpt   = "(?:," + rxVal + ")?"
-val rxVals     = rxVal + "," + rxVal + rxValOpt + rxValOpt + rxValOpt
-val rxCiteSpec = regex(r"^(natural|sqnatural|textual|numeric|super|auto)(?:[:](sort|nosort))?(?:[:]" + rxVals + ")?" )
+val rxValOpt   = "(?:," ++ rxVal ++ ")?"
+val rxVals     = rxVal ++ "," ++ rxVal ++ rxValOpt ++ rxValOpt ++ rxValOpt
+val rxCiteSpec = regex(r"^(natural|sqnatural|textual|numeric|super|auto)(?:[:](sort|nosort))?(?:[:]" ++ rxVals ++ ")?" )
 
 /* --------------------------------------
  Links 
@@ -374,7 +374,7 @@ pub fun expandChoices( s : string ) : list<string> {
     Just(cap) -> { 
       val pre = s.substr(0,cap.index) 
       val post = s.substr(cap.next)
-      cap.groups[1].split(",").list.map fn(part) { pre + part + post }
+      cap.groups[1].split(",").list.map fn(part) { pre ++ part ++ post }
     }
     Nothing -> [s]
   }
@@ -428,7 +428,7 @@ pub fun showInput( r : input ) {
     Math -> "math"
     MathDefs -> "mathdefs"
     Tex -> "tex"
-    Raw(monly) -> "raw(" + (monly.maybe("",showFormatter)) + ")"
+    Raw(monly) -> "raw(" ++ (monly.maybe("",showFormatter)) ++ ")"
     Markdown -> "markdown"
   }
 }
@@ -444,7 +444,7 @@ pub fun showFormatter( f : formatter ) {
 pub struct label( element : string, labelText : string, labelCaption : string, labelAttrs : attrs = attrsNone )
 
 pub fun show( attrs : attrs ) : string {
-  "{" + attrs.text + "}"
+  "{" ++ attrs.text ++ "}"
 }
 
 // Attributes
@@ -483,11 +483,11 @@ pub fun addClass( attrs: attrs, cname : string ) : attrs {
   if (cname=="") then return attrs
   if (attrs.classes.any( fn(nm) { nm == cname } ))
    then attrs
-   else attrs(classes=attrs.classes + [cname], text=attrs.text+" ; class: " + cname.quote, empty=False)
+   else attrs(classes=attrs.classes ++ [cname], text=attrs.text ++ " ; class: " ++ cname.quote, empty=False)
 }
 
 pub fun addInputClass( attrs : attrs ) : attrs {
-  if (attrs.input.isMarkdown) then attrs else attrs.addClass("input-" + attrs.input.showInput)
+  if (attrs.input.isMarkdown) then attrs else attrs.addClass("input-" ++ attrs.input.showInput)
 }
 
 pub fun addKeyvalIfNotEmpty( attrs : attrs, key : string, value : string ) : attrs {
@@ -503,7 +503,7 @@ pub fun addKeyvals( attrs : attrs, kvs : list<(string,string)> ) : attrs {
 }
 
 pub fun addKeyval( attrs : attrs, key : string, value : string ) : attrs {
-  attrs(keyvals=attrs.keyvals.filter(fn(kv){ kv.fst != key }) + [(key,value)], 
+  attrs(keyvals=attrs.keyvals.filter(fn(kv){ kv.fst != key }) ++ [(key,value)], 
         text=attrs.text+" ; "+key+": "+value.quote, empty=False)
 }
 
@@ -512,11 +512,11 @@ pub fun removeKeys( attrs : attrs, keys : list<string> ) : attrs {
 }
 
 pub fun setLineNo( attrs : attrs, line : int, dataline: string ) : attrs {
-  attrs(empty=False,lineNo=line, text=attrs.text + " ; line:" + line.show ).addKeyval("data-line",dataline)
+  attrs(empty=False,lineNo=line, text=attrs.text ++ " ; line:" ++ line.show ).addKeyval("data-line",dataline)
 }
 
 fun quote( s : string ) : string {
-  if (s.contains("\"")) then "'" + s + "'" else "\"" + s + "\""
+  if (s.contains("\"")) then "'" ++ s ++ "'" else "\"" ++ s ++ "\""
 }
 
 pub fun lookupKey( attrs : attrs, key : string, def : string ) : string {
@@ -541,8 +541,8 @@ pub fun hasClass( attrs : attrs, className : string ) : bool {
 pub fun generateHeaderId( attrs : attrs, heading : string, pre : string = "sec-") : attrs {
   val attrs1 = if (attrs.name!="") then attrs else {
     val newid = heading.normalizeId
-    val newname = if (newid=="") then "section" else pre + newid
-    attrs(text=attrs.text + " ; id:" + newname.quote, name = newname, empty=False)
+    val newname = if (newid=="") then "section" else pre ++ newid
+    attrs(text=attrs.text ++ " ; id:" ++ newname.quote, name = newname, empty=False)
   }
   attrs1
 }

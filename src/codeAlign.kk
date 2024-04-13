@@ -56,25 +56,25 @@ pub fun map( ct : codeTable,  f : (string,int) -> string ) : codeTable {
 }
 
 pub fun show( ct : codeTable ) : string {
-  "\\begin{tabular}{" + string(ct.columns,'l') + "}\n" +
+  "\\begin{tabular}{" ++ string(ct.columns,'l') ++ "}\n" +
    ct.rows.map( fn(row) { row.map(show).join(" & ") }).join("\\\\\n") +
      "\n\\end{tabular}"
 }
 
 fun show( ccell : ccell ) : string {
   val align = if (ccell.center) then "c|" else "l|"
-  "\\mc{" + ccell.span.show + "}{" + align + "}{" + ccell.content.replaceAll(" ","~") + "}"
+  "\\mc{" ++ ccell.span.show ++ "}{" ++ align ++ "}{" ++ ccell.content.replaceAll(" ","~") ++ "}"
 }
 
 
 pub fun codeAlign( txt : string, sep : int = 2 ) : codeTable
 {
-  val rxSep = regex( r" {" + sep.show + ",}" )
+  val rxSep = regex( r" {" ++ sep.show ++ ",}" )
   val ls    = txt.replaceAll("<br>","\n").lines.list
   //trace(ls.join("\n"))
   val colss = ls.map fn(line){ findAlignColumns(line,rxSep) }
   val acols = colss.merge 
-  //trace("\nalign cols: " + acols.map(show).join(","))
+  //trace("\nalign cols: " ++ acols.map(show).join(","))
   val rows  = zipWith(ls,colss) fn(line,cols){ makeRow(acols,line,cols,sep) }
   CodeTable( acols.length + 1, rows )
 }
@@ -123,7 +123,7 @@ fun tagsLength( cap : matched ) : int {
 }
 
 val rxHtmlTags = r"</?\w+\b[^>]*>";
-val rxTags = regex(r"<ESCAPED\s*(?:width=(\d*)\s*)?>[\s\S]*?</ESCAPED>|" + rxHtmlTags + r"|&(?:\w+|#[xX]?[\da-fA-F]+);")
+val rxTags = regex(r"<ESCAPED\s*(?:width=(\d*)\s*)?>[\s\S]*?</ESCAPED>|" ++ rxHtmlTags ++ r"|&(?:\w+|#[xX]?[\da-fA-F]+);")
 
 fun merge( alignss : list<list<int>> ) : list<int>
 {
@@ -144,19 +144,19 @@ fun makeRow( acols : list<int>, line : string, lineCols : list<int>, sep : int )
 {
   val parts1 = splitColumns( line, 0, lineCols )
   /*
-  trace("makeRow: " + acols.map(show).join(",") + ": " + lineCols.map(show).join(",") + "\n" +
-         " line:\n" + line + "\n" +
-         " parts:\n  " + 
-           parts1.map(fn(p) { p.fst.show + ": " + p.snd }).join("\n  "))
+  trace("makeRow: " ++ acols.map(show).join(",") ++ ": " ++ lineCols.map(show).join(",") ++ "\n" +
+         " line:\n" ++ line ++ "\n" +
+         " parts:\n  " ++ 
+           parts1.map(fn(p) { p.fst.show ++ ": " ++ p.snd }).join("\n  "))
   */
-  val rxEndSpaces = regex( string(sep,' ') + "$")
+  val rxEndSpaces = regex( string(sep,' ') ++ "$")
   alignParts( acols, parts1, rxEndSpaces  )
 }
 
 pub fun isWhite( s : string ) : bool {
   s.replaceAll(rxWhite,"") == ""
 }
-val rxWhite = regex(rxHtmlTags + r"|\s+")
+val rxWhite = regex(rxHtmlTags ++ r"|\s+")
 
 fun alignParts( acols : list<int>, parts : list<(int,string)>, rxEndSpaces : regex ) : list<ccell> {
   match( parts ) {

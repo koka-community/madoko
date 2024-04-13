@@ -31,7 +31,7 @@ pub fun parseBody( fcontext : formatContext,
                            secBase : int,
                            secDepth : int) :  div (list<block>,formatContext)
 {
-  parseDefinitions(fcontext, [Div([],(".madoko; line-adjust:0; line:" + lineNo.show).parseAttrs("body",src))],
+  parseDefinitions(fcontext, [Div([],(".madoko; line-adjust:0; line:" ++ lineNo.show).parseAttrs("body",src))],
                    metadata,tocDepth,secBase,secDepth)
 }
 
@@ -126,7 +126,7 @@ fun parseDefinitionsFull(
                       val caption = attrsx0.lookupKey("caption",txt)
                       val ecaption = attrsx0.transformText(caption,dict(),fcontext.inlineContext.metadata)
                       val xcaption = ecaption.expandKeys(attrsx0.source,attrsx0,dict(),fcontext.inlineContext.metadata)
-                      val kvs = [("caption",xcaption)] + (if (!attrsx0.hasKey("toc").bool) then [] else [("bookmark",xcaption.unformat)])
+                      val kvs = [("caption",xcaption)] ++ (if (!attrsx0.hasKey("toc").bool) then [] else [("bookmark",xcaption.unformat)])
                       attrsx0.addKeyvals(kvs)
                     }
                     _ -> attrsx0
@@ -142,7 +142,7 @@ fun parseDefinitionsFull(
         Just(clabel) -> {
           val clabelx = clabel.expandKeys(attrsx.source,attrsx,dict(),fcontext.inlineContext.metadata)
           //val info    = attrsx.lookupKey("cite-info",clabel)
-          labels["r" + attrsx.name] := Label(bname,clabelx,labelCaption,attrsx)
+          labels["r" ++ attrsx.name] := Label(bname,clabelx,labelCaption,attrsx)
         }
       }
     }
@@ -200,7 +200,7 @@ fun parseDefinitionsFull(
       DefFootnote(id,content) -> {
         footnoteCount := footnoteCount+1
         val ncontent = content.mapBlocks(parseDefBlock)
-        footnotes[id] := Footnote("&fn-" + id + ";",
+        footnotes[id] := Footnote("&fn-" ++ id ++ ";",
                                    fn(ictx){ formatBlocks(fcontext(inlineContext=ictx),ncontent) },
                                    extractCaption(ncontent))
         footnoteItems := Cons(ncontent,footnoteItems)
@@ -209,7 +209,7 @@ fun parseDefinitionsFull(
       Para(attrs=xs)  -> xs
       Code(_,lang,xs)  -> {
         if (lang=="") then xs else {
-          xs.addKeyval("language",lang).addClass("language-" + lang)
+          xs.addKeyval("language",lang).addClass("language-" ++ lang)
         }
       }
       Quote(attrs=xs) -> xs
@@ -247,8 +247,8 @@ fun parseDefinitionsFull(
                         then newblocks
                         else match(newblocks) { // ensure it appears inside the 'body'
                                 Cons(Div(children,attrs),Nil) ->
-                                  [Div(children + [Special("FOOTNOTES")], attrs)]
-                                _ -> newblocks + [Special("FOOTNOTES")]
+                                  [Div(children ++ [Special("FOOTNOTES")], attrs)]
+                                _ -> newblocks ++ [Special("FOOTNOTES")]
                              }
 
   val secblocks = fblocks.sections(secInit(secBase=secBase,secMax=secDepth,secDefaults=fn(a){ defaultAttrs.matchRules("section",a) }))
@@ -343,7 +343,7 @@ fun shouldRender( attrs : attrs, fmt : formatter ) :bool {
 fun transformItem( blocks : list<block>, attrs: attrs ) : block {
   match(attrs.hasKey("li-label")) {
     Nothing   -> Item(blocks,attrs)
-    Just(txt) -> Item([Line("[" + txt + "]{.li-label}")]+blocks,attrs)
+    Just(txt) -> Item([Line("[" ++ txt ++ "]{.li-label}")]+blocks,attrs)
   }
 }
 
@@ -391,7 +391,7 @@ fun extractCaption( blocks : list<block> ) : string
     Cons(block,rest) -> {
       val post = if (rest.isNil) then "" else "&nl;..."
       match(block) {
-        Heading(_,txt) -> txt + post
+        Heading(_,txt) -> txt ++ post
         Line(txt)  -> txt+post
         Para(txt)  -> txt+post
         Code(txt)  -> txt+post
@@ -414,7 +414,7 @@ fun sections( blocks : list<block>, secinfo : secinfo ) : div list<block>
   if (secinfo.level > secinfo.secMax) return blocks
   match (blocks.findHeading(secinfo)) {
     Nothing -> blocks.sectionMap(secinfo)
-    Just((pre,h,post)) -> pre.sectionMap(secinfo) + h.sectionSpan(post,secinfo)
+    Just((pre,h,post)) -> pre.sectionMap(secinfo) ++ h.sectionSpan(post,secinfo)
   }
 }
 
@@ -442,21 +442,21 @@ fun sectionSpan( h : block, blocks : list<block>,  secinfo : secinfo  ) : div li
       Heading(d,txt,attrs) -> {
         val (skvs,hkvs) = attrs.keyvals.partition(fn(kv) { kv.fst.startsWith("data-") })
         val (scls,hcls) = attrs.classes.partition(fn(c) { c.startsWith("section-") })
-        val secattrs = ".section" + d.show +
-                       "; data-section-depth: " + d.show +
-                        (if (attrs.name=="") then "" else "; id:'" + attrs.name + "'")
-        val hattrs = if (attrs.name=="") then attrs else attrs(name="heading-" + attrs.name)
+        val secattrs = ".section" ++ d.show +
+                       "; data-section-depth: " ++ d.show +
+                        (if (attrs.name=="") then "" else "; id:'" ++ attrs.name ++ "'")
+        val hattrs = if (attrs.name=="") then attrs else attrs(name="heading-" ++ attrs.name)
         val sattrs = secattrs.parseAttrs("section")
         val divattrs = (secinfo.secDefaults)(sattrs.addClasses(scls).addKeyvals(skvs))
         [Div(Cons(Heading(d,txt,hattrs(classes=hcls,keyvals=hkvs)),ncontent),divattrs)]
       }
-      _ -> [h].sectionMap(nsecinfo) + ncontent
+      _ -> [h].sectionMap(nsecinfo) ++ ncontent
     }
   }
 
   match(blocks.findHeading(secinfo)) {
     Nothing -> blocks.createSection()
-    Just((pre,hdr,post)) -> pre.createSection() + hdr.sectionSpan(post,secinfo)
+    Just((pre,hdr,post)) -> pre.createSection() ++ hdr.sectionSpan(post,secinfo)
   }
 }
 
@@ -495,8 +495,8 @@ fun headingLevel( block : block, default : int, defaultSection : int = default )
 // Create a table of contents
 fun createToc( tocName : string, headings : list<(int,attrs)>, labels : dict<label>, metadata : dict<string>, defaultAttrs : rules ) : div block
 {
-  val tocClass = if (tocName.isEmpty) then ".toc-contents" else ".toc-" + tocName
-  val attrsText = ".toc; " + tocClass
+  val tocClass = if (tocName.isEmpty) then ".toc-contents" else ".toc-" ++ tocName
+  val attrsText = ".toc; " ++ tocClass
   val source = headings.tocItems(0,labels,metadata,defaultAttrs).tocList(0,defaultAttrs)
   Div([], attrsText.parseAttrs("toc", source))
       //[headings.tocItems(0,labels,metadata,defaultAttrs).tocList(defaultAttrs)],
@@ -505,10 +505,10 @@ fun createToc( tocName : string, headings : list<(int,attrs)>, labels : dict<lab
 
 fun tocList( items : string, depth: int, defaultAttrs : rules ) : string {
   if (items.isEmpty) then "" else {
-    val tildes = string(depth+1,'~') + " "
-    tildes + "Begin TocBlock { .tocblock" + (depth+1).show + " }\n" +
+    val tildes = string(depth+1,'~') ++ " "
+    tildes ++ "Begin TocBlock { .tocblock" ++ (depth+1).show ++ " }\n" ++
       items +
-    tildes + "End TocBlock\n"
+    tildes ++ "End TocBlock\n"
   }
 }
 
@@ -523,16 +523,16 @@ fun tocItems( headings : list<(int,attrs)>, outerDepth : int, labels : dict<labe
       else {
         val (subs,rest) = hdrs.span( fn(h) { h.fst > depth } )
         val txt = attrs.lookupKey("toc-line","[??]").expandKeys(attrs.source,attrs,labels,metadata)
-        val tocline = r"[\/" + txt + r"\/](#" + attrs.name + ")"
-        val item = "~ Begin TocItem { .tocitem" + depth.show +
-                        "; data-toc-target-elem:" + attrs.elem +
-                        "; data-toc-target:" + attrs.name.show +
-                        "; toctarget:" + attrs.name.show + // legacy ...
-                        "; data-toc-depth:" + depth.show +
-                        "; data-toc-line:" + txt.show + " }\n" +
-                    tocline + "\n~ End TocItem\n";
+        val tocline = r"[\/" ++ txt ++ r"\/](#" ++ attrs.name ++ ")"
+        val item = "~ Begin TocItem { .tocitem" ++ depth.show ++
+                        "; data-toc-target-elem:" ++ attrs.elem ++
+                        "; data-toc-target:" ++ attrs.name.show ++
+                        "; toctarget:" ++ attrs.name.show ++ // legacy ...
+                        "; data-toc-depth:" ++ depth.show ++
+                        "; data-toc-line:" ++ txt.show ++ " }\n" ++
+                    tocline ++ "\n~ End TocItem\n";
         val subitems = tocItems(subs,depth,labels,metadata,defaultAttrs).tocList(depth,defaultAttrs)
-        item + subitems + tocItems(rest,outerDepth,labels,metadata,defaultAttrs)
+        item ++ subitems ++ tocItems(rest,outerDepth,labels,metadata,defaultAttrs)
       }
     }
   }
@@ -559,7 +559,7 @@ fun expandCounters( attrs : attrs, counters : mdict<h,counter>, metadata : dict<
 fun expandCounter(lab : string, counters : mdict<h,counter>, nested : mdict<h,list<string>> ) : st<h> string
 {
   lab.replaceAll(rxcounter) fn(cap) {
-    //trace("expand: " + lab + ": found: " + cap.groups[1] + " = " + counters[cap.groups[1]].string)
+    //trace("expand: " ++ lab ++ ": found: " ++ cap.groups[1] ++ " = " ++ counters[cap.groups[1]].string)
     val cname = cap.groups[1].definitionId
     match(counters[cname]) {
       Just(counter) -> counter.show
@@ -577,7 +577,7 @@ val rxcounter = regex(r"(?:\\/)?@([\w\-]+)(?:\\/)?")
 
 // adjust a counter
 fun adjustCounter(counters : mdict<h,counter>,name : string, value : string, nested : mdict<h,list<string>> ) : st<h> () {
-  //trace("increment " + counter + " from " + counters[counter].string + " to " + incrementCounter(counters[counter].string,value))
+  //trace("increment " ++ counter ++ " from " ++ counters[counter].string ++ " to " ++ incrementCounter(counters[counter].string,value))
   counters.setCounter( name, increment(counters[name].maybe(Counter(),id), value), nested )
   counters.resetNestedCounters(name,nested)
 }
@@ -636,7 +636,7 @@ fun setcounterstyle( counter : counter, xvalue : string, v : string ) : counter
     Cons(d,Nil) | d >= 'a' && d <= 'z' -> Counter((d - 'a').int+1,Lowercase)
     Cons(d,Nil) | d >= 'A' && d <= 'Z' -> Counter((d - 'A').int+1,Uppercase)
     _ -> {
-      warning( "unrecognized counter value: " + xvalue)
+      warning( "unrecognized counter value: " ++ xvalue)
       counter
     }
   }
@@ -676,7 +676,7 @@ fun initializeCounter( nested : mdict<h,list<string>>, name : string ) : st<h> (
   prefixes.foreachIndexed fn(i,_) {
     val pre = prefixes.take(i+1).join("-")
     nested[pre] := Cons(name, nested[pre].maybe([],id))
-    //trace("nested: " + pre + ": " + nested[pre].maybe([],id).join(","))
+    //trace("nested: " ++ pre ++ ": " ++ nested[pre].maybe([],id).join(","))
   }
 }
 
@@ -728,7 +728,7 @@ val symbolDecimal = ["&ast;","&dagger;","&Dagger;","&sect;","&para;"]
 fun showEntity( i : int ) : string {
   if (i >= 32 && i <= 127)
    then string(1,i.char)
-   else "&#" + i.show + ";"
+   else "&#" ++ i.show ++ ";"
 }
 
 fun showAsChar( i : int ) : string {
@@ -799,7 +799,7 @@ fun blockName(block : block) : string
     Item  -> "li"
     HLine -> "hr"
     Table -> "table"
-    Heading(depth=d) -> "h" + d.show
+    Heading(depth=d) -> "h" ++ d.show
     Div(attrs=xs) -> xs.elementName("div")
     _     -> ""
   }

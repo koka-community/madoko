@@ -39,7 +39,7 @@ pub type constant {
 
 
 pub fun evaluate( expr : string, eval : expr -> <exn|e> a, default : a ) : e a {
-  //trace("evaluate: '" + expr + "'")
+  //trace("evaluate: '" ++ expr ++ "'")
   val mbres = unsafeTotal( fn() { parseExpr(expr) } )
   match(mbres) {
     Just(res) | res.snd.trim.isEmpty -> {
@@ -49,7 +49,7 @@ pub fun evaluate( expr : string, eval : expr -> <exn|e> a, default : a ) : e a {
       })
     }
     _ -> {
-      warning("invalid expression: '" + expr + "'")
+      warning("invalid expression: '" ++ expr ++ "'")
       default
     }
   }
@@ -60,7 +60,7 @@ pub fun parseAttrSelectors( pat : string ) : list<expr> {
   match(mbres) {
     Just(res) | res.snd.trim.isEmpty -> res.fst
     _ -> {
-      warning("invalid attribute selector: '" + pat + "'")
+      warning("invalid attribute selector: '" ++ pat ++ "'")
       []
     }
   }
@@ -75,7 +75,7 @@ pub fun evalExpr( expr : expr, lookup : (string,string) -> <exn|e> constant ) : 
       elif (op=="regexp" || op=="regexpi") then Regex( regex(evalExpr(arg,lookup).string, ignoreCase=(op=="regexpi")) )
       elif (op=="lower") then String( evalExpr(arg,lookup).string.toLower )
       elif (op=="upper") then String( evalExpr(arg,lookup).string.toUpper )
-      else error("invalid operator: " + op)
+      else error("invalid operator: " ++ op)
     }
     BinOp(op,arg1,arg2) -> {
       val x1 = evalExpr(arg1,lookup)
@@ -99,7 +99,7 @@ pub fun evalExpr( expr : expr, lookup : (string,string) -> <exn|e> constant ) : 
           _        -> error("first argument of '~~' must be a regular expression")
         }
       }
-      else error("invalid operator: " + op)
+      else error("invalid operator: " ++ op)
     }
     If(cond,ethen,eelse) -> {
       if (evalExpr(cond,lookup).bool)
@@ -115,7 +115,7 @@ fun matchWord( s1 : string, s2 : string ) {
 val rxSpaces = regex(r"\s+")
 
 fun matchSubcode( s1 : string, s2 : string ) {
-  (s1 == s2) || (s1.startsWith(s2 + "-"))
+  (s1 == s2) || (s1.startsWith(s2 ++ "-"))
 }
 
 fun ierr( i1 : int, i2 : int ) : exn a { error("cannot compare integers") }
@@ -123,7 +123,7 @@ fun serr( s1 : string, s2 : string ) : exn a { error("cannot compare strings") }
 fun berr( b1 : bool, b2 : bool ) : exn a { error("cannot compare booleans") }
 
 fun binop( c1 : constant, c2: constant, op : string, iop : (int,int) -> exn a, sop : (string,string) -> exn a, bop : (bool,bool) -> exn a) : exn a {
-  val msg = "comparing values of different types (" + op + ") on (" + c1.show + ") and (" + c2.show + ")"
+  val msg = "comparing values of different types (" ++ op ++ ") on (" ++ c1.show ++ ") and (" ++ c2.show ++ ")"
   match(c1) {
     Int(i1) -> match(c2.cint) {
       Int(i2) -> iop(i1,i2)      
@@ -154,9 +154,9 @@ pub fun bool( c : constant ) : exn bool {
       val t = s.trim.toLower
       if (t=="true" || t=="1") then True
       elif (t=="false" || t=="0") then False
-      else error("cannot use string a boolean condition: " + s.show)
+      else error("cannot use string a boolean condition: " ++ s.show)
     }
-    Regex(r)  -> error("cannot use regular expression as a boolean condition: /" + r.source + "/")
+    Regex(r)  -> error("cannot use regular expression as a boolean condition: /" ++ r.source ++ "/")
     Null      -> error("cannot use none expression as a boolean condition")
   }
 }
@@ -183,14 +183,14 @@ pub fun cint( c : constant ) : constant {
 
 pub fun show( expr : expr, outer : bool = True ) : string {
   fun parens(s) {
-    if (outer) then s else "(" + s + ")"
+    if (outer) then s else "(" ++ s ++ ")"
   }
   match(expr) {
     Const(c)  -> c.show
     Var(_,d)  -> d
-    If(c,t,e) -> parens("@if " + c.show + " @then " + t.show + " @else " + e.show)
-    UnOp(op,e)-> op + "(" + e.show + ")"
-    BinOp(op,e1,e2) -> parens(e1.show(False) + " " + op + " " + e2.show(False))
+    If(c,t,e) -> parens("@if " ++ c.show ++ " @then " ++ t.show ++ " @else " ++ e.show)
+    UnOp(op,e)-> op ++ "(" ++ e.show ++ ")"
+    BinOp(op,e1,e2) -> parens(e1.show(False) ++ " " ++ op ++ " " ++ e2.show(False))
   }
 }
 
@@ -199,7 +199,7 @@ pub fun show( c : constant ) : string {
     Bool(b)   -> b.show
     Int(i)    -> i.show
     String(s) -> s.show
-    Regex(r)  -> "/" + r.source + "/"
+    Regex(r)  -> "/" ++ r.source ++ "/"
     Null      -> "none"
   }
 }
@@ -269,7 +269,7 @@ val parseString : parser<constant> =
   string(r#"'(?:[^\\']|\\[.\n])*'|"(?:[^\\"]|\\[.\n])*""#).map(fn(s) { String(s.unquote) } )
 
 val parseRegex : parser<expr> = 
-  satisfy(r"/((?:[^\\/\n]|\\.)*)/(i)?").map(fn(cap) { UnOp("regexp" + cap.groups[2], Const(String(cap.groups[1]))) })
+  satisfy(r"/((?:[^\\/\n]|\\.)*)/(i)?").map(fn(cap) { UnOp("regexp" ++ cap.groups[2], Const(String(cap.groups[1]))) })
 
 val parseModes : parser<expr> =
   (parseMode <*> many(parseMode)).map2 fn(x,xs) {
@@ -372,18 +372,18 @@ fun manyx( p : parser<a>, s : string ) : div maybe<(list<a>,string)> {
 }
 
 fun string( r: string ) : parser<string> {
-  satisfy("(" + r + ")").map( fn(cap) { cap.groups[1] })
+  satisfy("(" ++ r ++ ")").map( fn(cap) { cap.groups[1] })
 }
 
 fun satisfy( r: string ) : parser<matched> {
   return fn(s) {
-    match(s.find(regex(r"^\s*" + r, ignoreCase=True))) {
+    match(s.find(regex(r"^\s*" ++ r, ignoreCase=True))) {
       Just(cap) -> {
-        //trace("satisfy: " + cap.matched)
+        //trace("satisfy: " ++ cap.matched)
         Just((cap,s.substr1(cap.next)))
       }
       Nothing -> {
-        //trace("satisfy fail: /" + r + "/ on: " + s.substr(0,8)) 
+        //trace("satisfy fail: /" ++ r ++ "/ on: " ++ s.substr(0,8)) 
         Nothing
       }
     }

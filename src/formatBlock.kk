@@ -95,7 +95,7 @@ fun formatBlocksAcc( contxt : formatContext, blocks : list<block>, acc : builder
         // a blank line as a paragraph again.
         Line(txt,loose,attrs) -> {
           val (lines,rest2) = rest.span(isLine)
-          val content = txt + lines.map(lineText).join
+          val content = txt ++ lines.map(lineText).join
           match(rest2) {
             Cons(Blank(_),rest3) -> {
               formatBlocksAcc(contxt,rest3,acc.append(formatBlock(contxt,Para(content,attrs))))
@@ -142,7 +142,7 @@ fun getLineInfo( attrs : attrs ) : string {
   match(attrs.hasKey("data-line")) {
     Just(info) -> {
       val lineno = parseLineInfo(info).snd
-      if (lineno <= 0 || info.startsWith("0;")) then "" else "%mdk-data-line={" + info + "}\n" 
+      if (lineno <= 0 || info.startsWith("0;")) then "" else "%mdk-data-line={" ++ info ++ "}\n" 
     }
     Nothing    -> ""    
   }
@@ -173,7 +173,7 @@ pub fun formatBlock( contxt : formatContext, block : block ) : div string
        then contxt.fmtEnv("div", content, attrs) // content
       elif (content.contains(rxblank)) then "" else 
        contxt.fmtEnv("p", content, attrs)      
-       //"<p>" + formatInline(context.inlineContext,txt) + "</p>"
+       //"<p>" ++ formatInline(context.inlineContext,txt) ++ "</p>"
     }
 
     Line(txt,_loose,attrs) -> {
@@ -201,13 +201,13 @@ pub fun formatBlock( contxt : formatContext, block : block ) : div string
     }
      
     Heading(d,txt,attrs) -> { 
-      contxt.fmtCmd("h" + min(6,max(1, d + contxt.headingBase - 1)).show, formatInline(contxt.inlineContext,txt,attrs), 
+      contxt.fmtCmd("h" ++ min(6,max(1, d + contxt.headingBase - 1)).show, formatInline(contxt.inlineContext,txt,attrs), 
                      attrs.addKeyval("data-heading-depth",d.show))
     }
 
     HLine(attrs) -> {
       match(contxt.fmt) {
-        FmtHtml -> "\n<hr " + attrs.htmlFormat("hr",contxt.inlineContext.sanitize) + ">\n" 
+        FmtHtml -> "\n<hr " ++ attrs.htmlFormat("hr",contxt.inlineContext.sanitize) ++ ">\n" 
         _ -> contxt.fmtCmd("hr", "", attrs)
       }
     }
@@ -219,12 +219,12 @@ pub fun formatBlock( contxt : formatContext, block : block ) : div string
           contxt.inlineContext.fmtCode("pre",txt,parentAttrs.deriveFirstLineInfo)
         }
         Math      -> {
-          //("\\[" + txt.trim.escapeMath(context.fmt) + "\\]")
+          //("\\[" ++ txt.trim.escapeMath(context.fmt) ++ "\\]")
           // context.logLineInfo(parentAttrs)
           contxt.inlineContext.fmtMath(True,txt,parentAttrs.deriveMathAttrs,getLineInfo(parentAttrs))
         }
         MathPre   -> {
-          // ("\\[" + txt.mathPreBlock.escapeMath(context.fmt) + "\\]")
+          // ("\\[" ++ txt.mathPreBlock.escapeMath(context.fmt) ++ "\\]")
           // context.logLineInfo(parentAttrs)
           contxt.inlineContext.fmtMath(True,txt.mathPreBlock,parentAttrs.deriveMathAttrs,getLineInfo(parentAttrs))
         }
@@ -233,15 +233,15 @@ pub fun formatBlock( contxt : formatContext, block : block ) : div string
           val lineInfo = getLineInfo(parentAttrs)
           val mtxt = txt.escapeMath(contxt.fmt)
           match(contxt.fmt) {
-            FmtTex  -> lineInfo + mtxt
+            FmtTex  -> lineInfo ++ mtxt
             FmtHtml -> {
-              log("math-full","%mdk-begin-mathdefs\n" + lineInfo + txt + "\n")
+              log("math-full","%mdk-begin-mathdefs\n" ++ lineInfo ++ txt ++ "\n")
               if (contxt.inlineContext.mathStatic) then {
-                log("math-plain","%mdk-begin-mathdefs\n" + lineInfo + txt + "\n")
+                log("math-plain","%mdk-begin-mathdefs\n" ++ lineInfo ++ txt ++ "\n")
                 ""
               }
               else {
-                "\\[" + mtxt + "\\]"
+                "\\[" ++ mtxt ++ "\\]"
               }
             }
           }
@@ -250,12 +250,12 @@ pub fun formatBlock( contxt : formatContext, block : block ) : div string
         Raw(monly)-> {
           if (contxt.inlineContext.sanitize) then ""
           else match(monly) {
-            Nothing -> txt + "\n"
+            Nothing -> txt ++ "\n"
             Just(FmtTex) | contxt.fmt == FmtTex -> {
               val lineInfo = getLineInfo(parentAttrs)
-              "%mdk-begin-texraw\n" + lineInfo + txt + "\n"
+              "%mdk-begin-texraw\n" ++ lineInfo ++ txt ++ "\n"
             }
-            Just(f) | f == contxt.fmt -> txt + "\n"
+            Just(f) | f == contxt.fmt -> txt ++ "\n"
             _       -> "\n" 
           }
         }
@@ -302,10 +302,10 @@ pub fun formatBlock( contxt : formatContext, block : block ) : div string
       val rnd = attrs.input
       match (attrs.hasKey("bib-id")) {
         Just(bibid) -> {
-          log("aux","%mdk bib: " + bibid 
-                + (attrs.hasKey("csl-style").maybe("",fn(s) { ", csl-style:" + s.show }))
-                + (attrs.hasKey("bib-style").maybe("",fn(s) { ", bib-style:" + s.show }))
-                + (attrs.hasKey("locale").maybe("",fn(s) { ", locale:" + s.show })) 
+          log("aux","%mdk bib: " ++ bibid 
+                ++ (attrs.hasKey("csl-style").maybe("",fn(s) { ", csl-style:" ++ s.show }))
+                ++ (attrs.hasKey("bib-style").maybe("",fn(s) { ", bib-style:" ++ s.show }))
+                ++ (attrs.hasKey("locale").maybe("",fn(s) { ", locale:" ++ s.show })) 
              )
         }
         Nothing     -> ()
@@ -320,10 +320,10 @@ pub fun formatBlock( contxt : formatContext, block : block ) : div string
       val linfo = contxt.inlineContext.fmtLineInfo(attrs.hasKey("data-line").mbstring)
       if (name.toLower=="toc") then {
         val blks = contxt.tocBlocks[value.toLower].maybe([],id)
-        linfo + formatBlocksX(contxt,blks)
+        linfo ++ formatBlocksX(contxt,blks)
       }
-      elif (name.toLower=="footnotes" && contxt.fmt.isFmtHtml) then linfo + formatBlock(contxt,contxt.footnoteBlock)
-      else "" // formatBlock(context,Para("[" + name + "]\n"))
+      elif (name.toLower=="footnotes" && contxt.fmt.isFmtHtml) then linfo ++ formatBlock(contxt,contxt.footnoteBlock)
+      else "" // formatBlock(context,Para("[" ++ name ++ "]\n"))
     }
     
     DefLink       -> ""
@@ -352,10 +352,10 @@ fun formatRows( rows : list<row>,
   fun defaultCellKeyvals( colNum : int, rowstyle : attrs, isLast : bool ) : list<(string,string)> {
     val mod  = if (colNum.even) then "even-" else "odd-"
     val elem = if (isBody) then "td-" else "th-"
-    val idx  = colNum.show + "-"
-    val prefixes = ["cell-","col-","col-" + mod, "col-" + idx,
+    val idx  = colNum.show ++ "-"
+    val prefixes = ["cell-","col-","col-" ++ mod, "col-" ++ idx,
                     elem, elem + mod, elem+idx] +
-                   (if (isLast) then ["col-last-",elem + "last-"] else [])
+                   (if (isLast) then ["col-last-",elem ++ "last-"] else [])
     val allkvs  = attrs.keyvals + rowstyle.keyvals
     val kvs = allkvs.filterKeyvals(prefixes)
     kvs
@@ -440,10 +440,10 @@ fun formatRows( rows : list<row>,
   fun defaultKeyvals( hasLine :  bool, rowNum : int, isLast : bool ) : list<(string,string)> {
     val mod = if (rowNum.even && rowNum != 0) then "even-" else "odd-"
     val row = if (isBody) then "tbody-tr-" else "thead-tr-"
-    val idx = rowNum.show + "-"
-    val prefixes = ["tr-","tr-" + mod,"tr-" + idx,
-                    row, row + mod, row + idx ] + 
-                   (if (isLast) then ["tr-last-",row + "last-"] else [])
+    val idx = rowNum.show ++ "-"
+    val prefixes = ["tr-","tr-" ++ mod,"tr-" ++ idx,
+                    row, row ++ mod, row ++ idx ] ++ 
+                   (if (isLast) then ["tr-last-",row ++ "last-"] else [])
     val kvs = attrs.keyvals.filterKeyvals(prefixes)
     if (hasLine)
      then kvs.filter(fn(kv){kv.fst.startsWith("background-color") || kv.fst.startsWith("rule") })

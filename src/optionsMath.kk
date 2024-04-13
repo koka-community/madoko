@@ -17,7 +17,7 @@ import optionsSandbox
 
 pub fun updateMath( options:options, key: string, lvalue: string, value:string, ivalue: int, bvalue:bool ) : options
 {
-  if (key=="mathjax-ext" || key=="mathjax-extension") then options(math = (options.math)(mjext=if (value=="") then "" else options.math.mjext + ";" + value))
+  if (key=="mathjax-ext" || key=="mathjax-extension") then options(math = (options.math)(mjext=if (value=="") then "" else options.math.mjext ++ ";" ++ value))
   elif (key=="math-mode") then options.setMathMode(value)
   elif (key=="math-static" || key=="math-dir") then options(math = (options.math)(imgDir = if (lvalue=="true") then "math" else value))
   elif (key=="math-scale") then options(math = (options.math)(scale=ivalue))
@@ -49,7 +49,7 @@ fun setMathMode( options : options, value : string ) : options {
   elif (nvalue=="dynamic") then options(math = (options.math)(mode=Dynamic))
   elif (nvalue=="mathjax") then options(math = (options.math)(mode=Dynamic, mathjax=if (options.math.mathjax.bool) then options.math.mathjax else "default"))
   else {
-    warning("unrecognized math mode: " + nvalue)
+    warning("unrecognized math mode: " ++ nvalue)
     options
   }
 }
@@ -58,7 +58,7 @@ fun parseMathRender( options : options, value : string, def : maybe<mathrender> 
   if (value=="png") then Just(Png)
   elif (value=="svg") then Just(Svg)
   else {
-    warning("unrecognized math rendering mode: " + value + ", expecting one of 'png' or 'svg'")
+    warning("unrecognized math rendering mode: " ++ value ++ ", expecting one of 'png' or 'svg'")
     def
   }
 }

@@ -46,81 +46,81 @@ pub type block {
 val inlineTags  = [ "a","em","strong","small","s","cite","q","dfn","abbr","data","time","code",
                     "var","samp","kbd","sub","sup","i","b","u","mark","ruby","rt","rp","bdi","bdo",
                     "span","br","wbr","ins","del","img" ]
-val atag        = r"(?!(?:" + inlineTags.join("|") + r")\b)\w+(?!:/|@)\b"
+val atag        = r"(?!(?:" ++ inlineTags.join("|") ++ r")\b)\w+(?!:/|@)\b"
 val comment     = r"!--[\s\S]*?-->"
 pub val tagContent  = r#"(?:"[^"]*"|'[^']*'|[^'">])*"#
-val closedTag   = r"(" + atag + r")[\s\S]+?</\1>"
-val soloTag     = r"" + atag + tagContent + ">"
-val html        = r"<(?:" + [closedTag,soloTag,comment].join("|") + r") *(?:\n+|\s*$)"
+val closedTag   = r"(" ++ atag ++ r")[\s\S]+?</\1>"
+val soloTag     = r"" ++ atag ++ tagContent ++ ">"
+val html        = r"<(?:" ++ [closedTag,soloTag,comment].join("|") ++ r") *(?:\n+|\s*$)"
 
 // Attributes: allow escaped newline
 val rattrs      = r#"(?:<!--)?\{:?((?:[^\\'"\}\n]|\\[\s\S]|'(?:[^\\']|\\[\s\S])*'|"(?:[^"\\]|\\[\s\S])*")*)\}(?:-->)?"# // allow optional colon for maraku compat
-val xattrs      = rattrs + " *"
-val iattrs      = "(?:" + xattrs + ")?"           // inline: headers and fences
-val pattrs      = r"(?: {0,3}" + xattrs + ")?"    // after a paragraph
-val battrs      = r"(?:\n {0,3}" + xattrs + ")?"  // after a block element
-val lattrs      = r"\n {0,3}" + xattrs + r"\s*$"  // after a list (separate for efficiency)
+val xattrs      = rattrs ++ " *"
+val iattrs      = "(?:" ++ xattrs ++ ")?"           // inline: headers and fences
+val pattrs      = r"(?: {0,3}" ++ xattrs ++ ")?"    // after a paragraph
+val battrs      = r"(?:\n {0,3}" ++ xattrs ++ ")?"  // after a block element
+val lattrs      = r"\n {0,3}" ++ xattrs ++ r"\s*$"  // after a list (separate for efficiency)
 
 // Various
 val xlinkid     = r"((?:[^\[\]\n]|\[[^\]\n]*\])*)"
-val hr          = r"(?:[*_\-](?: *[*_\-]){2,}) *" + iattrs + r"(?:\n+|$)"
+val hr          = r"(?:[*_\-](?: *[*_\-]){2,}) *" ++ iattrs ++ r"(?:\n+|$)"
 
 val bull        = r"(?:[*+\-]|(?:\d+|[#iIaA])[\.\)])"
-val bullrest    = r"(?:[*+\-]|(?:\d+|[#a-zA-Z]|" + lroman + "|" + uroman + r")[\.\)])"
+val bullrest    = r"(?:[*+\-]|(?:\d+|[#a-zA-Z]|" ++ lroman ++ "|" ++ uroman ++ r")[\.\)])"
 val lroman      = r"(?:x?(?:i(?:v|x|i|ii)?|[vx]i{0,3}))"
 val uroman      = r"(?:X?(?:I(?:V|X|I|II)?|[VX]I{0,3}))"
 
-val endlist     = hr + r"|\n(?! )(?!\1" + bull + r" )"
-val alist       = r"( *)(" + bull + r") ([\s\S]+?)(?=\n(?:" + endlist + r")|$)\n?"
-val endpara     = r" *(?:<" + atag + r"|```|~+|>.|#{1,6} |\[" + xlinkid + r"\]:|"
-                            + hr + r"|.+?\n *(?:===|---)" + ")"
+val endlist     = hr ++ r"|\n(?! )(?!\1" ++ bull ++ r" )"
+val alist       = r"( *)(" ++ bull ++ r") ([\s\S]+?)(?=\n(?:" ++ endlist ++ r")|$)\n?"
+val endpara     = r" *(?:<" ++ atag ++ r"|```|~+|>.|#{1,6} |\[" ++ xlinkid ++ r"\]:|"
+                            ++ hr ++ r"|.+?\n *(?:===|---)" ++ ")"
 
 val notbspecialx= r"(?:[^ \[\*\-_\+\d><#`~\niIaA]|[iIaA](?!\.))" // not special block start sequence
 val notbspecial = r"(?:[^ \[\*\-_\+\d><#`~\niIaA]|[iIaA](?!\.))" // not special block start sequence
 
 // deflist
-val defitem     = r"(?:(?:\* (.*))|((?:" + notbspecial + r").*))\n\n?"
+val defitem     = r"(?:(?:\* (.*))|((?:" ++ notbspecial ++ r").*))\n\n?"
 val defstart    = r"(?:[:]| {1,2}[~:])"
 val defdef      = r"(?:.*(?:\n|$)(?:(?:    .*)?(?:\n|$))*)"
-val defdefs     = r"(?:" + defstart + defdef + ")+"
-val deflist     = r"^(?:" + defitem + defdefs + ")+" + pattrs
+val defdefs     = r"(?:" ++ defstart ++ defdef ++ ")+"
+val deflist     = r"^(?:" ++ defitem ++ defdefs ++ ")+" ++ pattrs
 
 // Tables
 val rxtableHeader = r"((?:(?:\| *|\+)[-=][-=+| ]*\n *)?(?:\| *[^-=~: ].+\n *)*)"
-val rxtableSep    = r"((?:\| *|\+)[-=~:](?:[-=~+| :]|" + xattrs + ")*)\n"
+val rxtableSep    = r"((?:\| *|\+)[-=~:](?:[-=~+| :]|" ++ xattrs ++ ")*)\n"
 val rxtableBody   = r"((?: *(?:\||\+[-=]).*(?:\n|$))+)"
 
 // The main block grammar
 val blockGrammar : grammar<block,blockContext> = [
-  Rule("lheading",   regex(r"^(?!    )([^ \n].*?)" + iattrs + r"\n *(===+|---+) *(?:\n+|$)"), blockHeadingLine ),
+  Rule("lheading",   regex(r"^(?!    )([^ \n].*?)" ++ iattrs ++ r"\n *(===+|---+) *(?:\n+|$)"), blockHeadingLine ),
   Rule("deflist",    regex(deflist), blockDefList ),
-  Rule("parax",      regex(r"^(" + notbspecial + r"[^|\n]*?(?:\n|$)(?:(?!" + endpara + r").+(?:\n|$))*)\n*"), blockPara ),
+  Rule("parax",      regex(r"^(" ++ notbspecial ++ r"[^|\n]*?(?:\n|$)(?:(?!" ++ endpara ++ r").+(?:\n|$))*)\n*"), blockPara ),
 
   Rule("code",       regex(r"^(    (?:.|\n+    )*)\n*"), blockCode ),
-  Rule("html",       regex(r"^ *" + html), blockHtml ),
-  Rule("deflink",    regex(r"^ *\[(?!\^)" + xlinkid + r#"\]: *<?((?:[^\\\s>]|\\(?:.|\n *))+)>?(?: +["(]((?:[^\n\\]|\\(?:.|\n *))+)[")])?(?: |\\\n *)*" +iattrs+ r"(\n+|$)"#), blockDefLink ),
-  Rule("deffootnote",regex(r"^ *\[\^" + xlinkid + r"\]: *(?:\n {4})?(.*(?:\n+ {4}.*)*)(?:\n+|$)"), blockDefFootnote),
-  Rule("hline",      regex(r"^ *" + hr), blockHLine ),
+  Rule("html",       regex(r"^ *" ++ html), blockHtml ),
+  Rule("deflink",    regex(r"^ *\[(?!\^)" ++ xlinkid ++ r#"\]: *<?((?:[^\\\s>]|\\(?:.|\n *))+)>?(?: +["(]((?:[^\n\\]|\\(?:.|\n *))+)[")])?(?: |\\\n *)*"# ++ iattrs ++ r"(\n+|$)"), blockDefLink ),
+  Rule("deffootnote",regex(r"^ *\[\^" ++ xlinkid ++ r"\]: *(?:\n {4})?(.*(?:\n+ {4}.*)*)(?:\n+|$)"), blockDefFootnote),
+  Rule("hline",      regex(r"^ *" ++ hr), blockHLine ),
 
-  Rule("list",       regex(r"^" + alist), blockList ),  // before heading due to #.
-  Rule("heading",    regex(r"^ *(#{1,6})(0?) *(.+?) *#* *" + iattrs + r"(?:\n+|$)"), blockHeading ),
-  Rule("blockquote", regex(r"^((?: *>.+(?:\n[^{\n]+)*\n*)+)" + battrs + "(?:\n+|$)"), blockQuote ),
-  Rule("fenced",     regex(r"^ *(```+) *(?:([^{}\s]+) *)?" + iattrs + r"\n([\s\S]+?)\n *\1 *(?:\n+|$)"), blockFencedCode ),
+  Rule("list",       regex(r"^" ++ alist), blockList ),  // before heading due to #.
+  Rule("heading",    regex(r"^ *(#{1,6})(0?) *(.+?) *#* *" ++ iattrs ++ r"(?:\n+|$)"), blockHeading ),
+  Rule("blockquote", regex(r"^((?: *>.+(?:\n[^{\n]+)*\n*)+)" ++ battrs ++ "(?:\n+|$)"), blockQuote ),
+  Rule("fenced",     regex(r"^ *(```+) *(?:([^{}\s]+) *)?" ++ iattrs ++ r"\n([\s\S]+?)\n *\1 *(?:\n+|$)"), blockFencedCode ),
 
-  Rule("table",      regex(r"^ *" + rxtableHeader + rxtableSep + rxtableBody + pattrs + r"\n*"), blockTable ),
-  Rule("nptable",    regex(r"^ *(\S[^|\n]*?\|.*?)\n *([-=~:]+ *\|[-=~| :]*)\n((?:.*\|.*(?:\n|$))*)" + pattrs + r"\n*"), blockNpTable ),
+  Rule("table",      regex(r"^ *" ++ rxtableHeader ++ rxtableSep ++ rxtableBody ++ pattrs ++ r"\n*"), blockTable ),
+  Rule("nptable",    regex(r"^ *(\S[^|\n]*?\|.*?)\n *([-=~:]+ *\|[-=~| :]*)\n((?:.*\|.*(?:\n|$))*)" ++ pattrs ++ r"\n*"), blockNpTable ),
 
-  Rule("divnamed",   regex(r"^ *(~+) *[Bb]egin +([\w\d\-]*) *" + iattrs + r"(?=\n)([\s\S]*?)\n *\1 *[Ee]nd +\2 *(?:\n+|$)"), blockDiv ),
-  Rule("div",        regex(r"^ *(~+) *([\w\d\-]*) *" + iattrs + r"(?=\n)([\s\S]*?)\n *\1 *(?:\n+|$)"), blockDiv ),
+  Rule("divnamed",   regex(r"^ *(~+) *[Bb]egin +([\w\d\-]*) *" ++ iattrs ++ r"(?=\n)([\s\S]*?)\n *\1 *[Ee]nd +\2 *(?:\n+|$)"), blockDiv ),
+  Rule("div",        regex(r"^ *(~+) *([\w\d\-]*) *" ++ iattrs ++ r"(?=\n)([\s\S]*?)\n *\1 *(?:\n+|$)"), blockDiv ),
 
   Rule("special",    regex(r"^ *\[ *(TOC|FOOTNOTES|TITLE)(?: *= *([\w-]*))? *\] *\n*"), blockSpecial ),
-  Rule("para",       regex(r"^(.+(?:\n|$)(?:(?!" + endpara + r").+(?:\n|$))*)\n*"), blockPara ),
+  Rule("para",       regex(r"^(.+(?:\n|$)(?:(?!" ++ endpara ++ r").+(?:\n|$))*)\n*"), blockPara ),
   Rule("blank",      regex(r"^\n+"), blockBlank ),
   ruleLine,
 ]
 
 val ruleLine = Rule("para-line",  regex(r"^.+(\n|$)"), blockLine)
-val ruleLineX= Rule("parax-line", regex(r"^" + notbspecial + r".*(\n|$)"), blockLine)
+val ruleLineX= Rule("parax-line", regex(r"^" ++ notbspecial ++ r".*(\n|$)"), blockLine)
 
 val blockListGrammar = blockGrammar.ruleReplace( True, ruleLineX )
                                    .ruleReplace( True, ruleLine  )
@@ -152,15 +152,15 @@ type blockContext {
 ---------------------------------------- */
 fun blockSpecial( cap : matched, contxt : blockContext ) : block {
   fun joinnl( lines : list<string> ) : string {
-    lines.map(fn(line) { line + "\n" }).join
+    lines.map(fn(line) { line ++ "\n" }).join
   }
   fun mkblock( name, content : list<string>, lineno = contxt.lineNo ) : list<string> {
-    if (content.isNil) then [] else ["~ Begin " + name + " { line-adjust:0; line:" + lineno.show + " }"] + content + ["~ End " + name]
+    if (content.isNil) then [] else ["~ Begin " ++ name ++ " { line-adjust:0; line:" ++ lineno.show ++ " }"] ++ content ++ ["~ End " ++ name]
   }
   fun entry(name, className = name) {
     match(contxt.metadata[name]) {
       Just(value) | value.trim != ""
-        -> mkblock(className, ["&" + name + ";"])
+        -> mkblock(className, ["&" ++ name ++ ";"])
       _ -> []
     }
   }
@@ -183,11 +183,11 @@ fun blockSpecial( cap : matched, contxt : blockContext ) : block {
   }
   fun author( idx : int ) : list<string> {
     mkblock("Author",
-      [entry("author" + idx.show, "AuthorName"),
-       entry("affiliation" + idx.show, "AuthorAddress"),
-       entry("address" + idx.show, "AuthorAddress"),
-       entry("author-note" + idx.show, "AuthorNote"),
-       entry("email" + idx.show, "AuthorEmail")].concat)
+      [entry("author" ++ idx.show, "AuthorName"),
+       entry("affiliation" ++ idx.show, "AuthorAddress"),
+       entry("address" ++ idx.show, "AuthorAddress"),
+       entry("author-note" ++ idx.show, "AuthorNote"),
+       entry("email" ++ idx.show, "AuthorEmail")].concat)
   }
   fun authorRow( idxs : list<int> ) : list<string> {
     mkblock("AuthorRow", idxs.concat(author))
@@ -195,7 +195,7 @@ fun blockSpecial( cap : matched, contxt : blockContext ) : block {
   if (cap.groups[1].toLower == "title") then {
     val authorCount = readInt("author-count")
     val titleBlock = [
-        mkblock("TitleHeader", entry("title","Title")  + entry("subtitle","Subtitle") + entry("sub-title","Subtitle") + entry("title-note","TitleNote") ),
+        mkblock("TitleHeader", entry("title","Title") ++ entry("subtitle","Subtitle") ++ entry("sub-title","Subtitle") ++ entry("title-note","TitleNote") ),
         mkblock("Authors", list(1,authorCount).group(readInt("author-columns",3)).concat(authorRow) ),
         entry("title-footer","TitleFooter")
       ].concat.join("\n")
@@ -214,7 +214,7 @@ fun blockPara( cap : matched, _context ) : block {
   }
   Para(txt, attrTxt.parseAttrs("P",txt) )
 }
-val rxPattrs = regex(r"\n {0,3}" + xattrs + r"\s*$")
+val rxPattrs = regex(r"\n {0,3}" ++ xattrs ++ r"\s*$")
 
 fun blockDefLink( cap : matched, contxt : blockContext ) :  block {
   val id = cap.groups[1].definitionId
@@ -246,7 +246,7 @@ fun blockHeadingLine( cap : matched, contxt : blockContext ) : block {
 }
 
 fun makeHeading(depth:int, source:string, attrStr : string) {
-  val elem   = "H" + depth.show
+  val elem   = "H" ++ depth.show
   Heading(depth, source, attrStr.parseAttrs(elem,source))
 }
 
@@ -263,7 +263,7 @@ fun blockFencedCode( cap : matched, contxt : blockContext ) {
   val attrs = cap.groups[3].parseAttrs
   Code(cap.groups[4], cap.groups[2],
         if (!(contxt.pedantic || contxt.bench))
-          then attrs.addClasses(["pre-fenced","pre-fenced" + cap.groups[1].length.show])
+          then attrs.addClasses(["pre-fenced","pre-fenced" ++ cap.groups[1].length.show])
           else attrs)
 }
 
@@ -279,15 +279,15 @@ val rxquotePrefix = regex(r"^ *> ?",multiline=True)
 fun blockDiv( cap : matched, contxt : blockContext ) : block {
   val cname = cap.groups[2].definitionId
   // if (cname=="htmlraw") then return Source(cap.groups[4],Raw(Just(FmtHtml)),attrsNone)
-  log("customs","{ \"name\":" + cname.json  + ", \"display\":" + cap.groups[2].json + "}");
+  log("customs","{ \"name\":" ++ cname.json  ++ ", \"display\":" ++ cap.groups[2].json ++ "}");
   val attrs = cap.groups[3].parseAttrs(cname,source=cap.groups[4].substr(1))
   Div( [], attrs )
 }
 
 fun blockDefFootnote( cap : matched, contxt : blockContext ) :  block {
   val id  = cap.groups[1].definitionId
-  val txt = "~ Begin Footnote { id='fn-" + id + "' }\n" +
-               cap.groups[2].replaceAll(rxindent4,"") + "\n" +
+  val txt = "~ Begin Footnote { id='fn-" ++ id ++ "' }\n" +
+               cap.groups[2].replaceAll(rxindent4,"") ++ "\n" +
             "~ End Footnote"
   DefFootnote(id, parseBlocks(contxt,txt))
 }
@@ -297,7 +297,7 @@ fun blockDefFootnote( cap : matched, contxt : blockContext ) :  block {
 
 fun blockDefList( cap : matched, contxt : blockContext ) : block {
   fun parseItem( extraAttrs : string, icap : matched, line : int, icontext : blockContext ) :  list<block> {
-    //trace("item:\n" + icap.matched)
+    //trace("item:\n" ++ icap.matched)
     val item = icap.groups[4].replaceAll(rxindent4,"")
     val attrs = icap.groups[3].parseAttrs("dd",source=item)
     val term  = if (icap.groups[1]=="") then icap.groups[2] else icap.groups[1]
@@ -307,12 +307,12 @@ fun blockDefList( cap : matched, contxt : blockContext ) : block {
                 }
     val ddesc = Div(parseBlocks(icontext,item,line),
                           if (line <= 0) then attrs else attrs.setLineNo(contxt.lineMap,line))
-    [ddesc] + dterm
+    [ddesc] ++ dterm
   }
 
   blockListX( cap.matched.trim, contxt, "dl", ".dl", rxDefItem, parseItem )
 }
-val rxDefItem = regex( r"^(?:" + defitem + r")?" + defstart + "(?:" + iattrs + r")? *(" + defdef + ")" )
+val rxDefItem = regex( r"^(?:" ++ defitem ++ r")?" ++ defstart ++ "(?:" ++ iattrs ++ r")? *(" ++ defdef ++ ")" )
 
 // --------------------------------
 // Lists
@@ -324,7 +324,7 @@ fun blockList( cap : matched, contxt : blockContext ) : block {
     val item = icap.groups[4].replaceAll(if (icontext.pedantic)
                                            then rxindent4
                                            else rxindent(icap.groups[1].length) ,"")
-    val attrs = (extraAttrs + " ; " + icap.groups[3]).parseAttrs("li", item)
+    val attrs = (extraAttrs ++ " ; " ++ icap.groups[3]).parseAttrs("li", item)
     [Item(parseBlocks(icontext,item,line),
            if (line <= 0) then attrs else attrs.setLineNo(contxt.lineMap,line))]
   }
@@ -338,12 +338,12 @@ fun blockList( cap : matched, contxt : blockContext ) : block {
                  elif (bull=="a") then "list-style-type:lower-alpha"
                  elif (bull=="A") then "list-style-type:upper-alpha"
                  else ""
-  val attrs1 = if (cap.groups[2].endsWith(")")) then attrs0 + " ; .list-sep-paren"
-               elif (cap.groups[2].endsWith(")")) then attrs0 + " ; .list-sep-dot"
+  val attrs1 = if (cap.groups[2].endsWith(")")) then attrs0 ++ " ; .list-sep-paren"
+               elif (cap.groups[2].endsWith(")")) then attrs0 ++ " ; .list-sep-dot"
                else attrs0
-  blockListX( cap.matched, contxt, tag, "." + tag + " ; " + attrs1, rxitem, parseItem )
+  blockListX( cap.matched, contxt, tag, "." ++ tag ++ " ; " ++ attrs1, rxitem, parseItem )
 }
-val rxitem      = regex(r"^(( *)(?:" + bullrest + r") +)(?:" + iattrs + r")?(.*(?:\n(?!\2" + bullrest + r" ).*)*\n?)",multiline=True);
+val rxitem      = regex(r"^(( *)(?:" ++ bullrest ++ r") +)(?:" ++ iattrs ++ r")?(.*(?:\n(?!\2" ++ bullrest ++ r" ).*)*\n?)",multiline=True);
 
 fun blockListX( text : string, contxt : blockContext,
                      tag : string, attrsInit : string, rxParseItem : regex, parseItem : (string,matched,int,blockContext) -> list<block> ) : block
@@ -357,7 +357,7 @@ fun blockListX( text : string, contxt : blockContext,
 
 
   val (txt,attrsTxt) = match(text.find(rxlattrs)) {
-    Just(acap) -> (text.substr(0,text.length - acap.matched.length), attrsInit + " " + acap.groups[1])
+    Just(acap) -> (text.substr(0,text.length - acap.matched.length), attrsInit ++ " " ++ acap.groups[1])
     Nothing    -> (text,attrsInit)
   }
   val attrs0 = attrsTxt.parseAttrs(tag).addClasses( [if (loose) then "loose" else "compact"] )
@@ -370,20 +370,20 @@ fun blockListX( text : string, contxt : blockContext,
                 }
               }
 
-  val extraAttrs = attrs.classes.map( fn(cls) { "." + cls + "-li" } ).join(" ")
+  val extraAttrs = attrs.classes.map( fn(cls) { "." ++ cls ++ "-li" } ).join(" ")
 
   fun parseItems( src : string, line : int, acc : list<block> = Nil ) {
     match (src.find(rxParseItem)) {
       Nothing    -> acc.reverse
       Just(icap) -> {
-        val newline = if (line <= 0) then line else line + icap.matched.count("\n")
-        parseItems( src.substr1(icap.next), newline, parseItem(extraAttrs,icap,line,icontext) + acc)
+        val newline = if (line <= 0) then line else line ++ icap.matched.count("\n")
+        parseItems( src.substr1(icap.next), newline, parseItem(extraAttrs,icap,line,icontext) ++ acc)
       }
     }
   }
 
   // if loose then add a blank at the end of the last item so it has a Blank
-  val items = parseItems( txt + (if (loose) then "\n\n" else ""), contxt.lineNo )
+  val items = parseItems( txt ++ (if (loose) then "\n\n" else ""), contxt.lineNo )
   List(tag,items,attrs)
 }
 
@@ -397,7 +397,7 @@ fun rxindent(i : int ) : regex {
   elif (i==5) then rxindent5x
   elif (i==2) then rxindent2x
   elif (i==3) then rxindent3x
-  else regex(r"^ {1," + i.show + "}",multiline=True)
+  else regex(r"^ {1," ++ i.show ++ "}",multiline=True)
 }
 val rxindent2x  = regex(r"^  ?",multiline=True)
 val rxindent3x  = regex(r"^ {1,3}",multiline=True)
@@ -427,7 +427,7 @@ fun blockTable( cap : matched, contxt ) : block {
 }
 
 fun npcolumns( row : string, contxt : blockContext, ofs : int ) : row {
-  ("|" + row + "|").columns(contxt,ofs)
+  ("|" ++ row ++ "|").columns(contxt,ofs)
 }
 
 fun rows( body : string ) : list<string> {
@@ -446,9 +446,9 @@ fun columns( row : string, contxt : blockContext, ofs: int ) : row {
 val rxCellCodeInline = r"(?:``(?:[^`]|`(?!`))*``|`(?:[^`]|``)*`)"
 val rxCellTexInline1 = r"(?:\$(?!\{)(?:(?:[^\\\$\|]|\\[\s\S])+)\$)"
 val rxCellTexInline2 = r"(?:\$\{(?:(?:[^\\\$]|\\[\s\S])+)\$)"
-val rxCellContent = r"(?:\\.|"+ rxCellTexInline1 + r"|" + rxCellTexInline2 + r"|" + rxCellCodeInline + r"|[^\\|+]|\+ *(?![-=]))"
-val rxCell = regex(r"(?:^ *(?:\||\+(?=[-=])))?(" + rxCellContent + r"+(?:[|]+|[+]+(?= *[-=])|$))")
-val rxRowAttr = regex(r"[\+\|]" + xattrs + "$")
+val rxCellContent = r"(?:\\.|"+ rxCellTexInline1 ++ r"|" ++ rxCellTexInline2 ++ r"|" ++ rxCellCodeInline ++ r"|[^\\|+]|\+ *(?![-=]))"
+val rxCell = regex(r"(?:^ *(?:\||\+(?=[-=])))?(" ++ rxCellContent ++ r"+(?:[|]+|[+]+(?= *[-=])|$))")
+val rxRowAttr = regex(r"[\+\|]" ++ xattrs ++ "$")
 
 // split the separator row in cells, and include the separators for determining the column style
 fun columnStyles( row : string ) : list<attrs> {
@@ -457,7 +457,7 @@ fun columnStyles( row : string ) : list<attrs> {
 }
 
 fun columnStyle( style : string ) : attrs {
-  match(style.find(regex(r"^([|+])? *(:)?([ ~=-]*)(?:" + xattrs + ")?([ ~=-]*)(:)? *(?:([|+]) *)?$"))) {
+  match(style.find(regex(r"^([|+])? *(:)?([ ~=-]*)(?:" ++ xattrs ++ ")?([ ~=-]*)(:)? *(?:([|+]) *)?$"))) {
     Nothing    -> attrsNone // should not happen?
     Just(ccap) -> {
       val align = if (ccap.groups.matchedOn(2))
@@ -465,9 +465,9 @@ fun columnStyle( style : string ) : attrs {
                    else (if (ccap.groups.matchedOn(6)) then " ; text-align:right" else "")
       val borders = (if (ccap.groups[1]!="+") then "" else " ; .cell-border-left") +
                     (if (ccap.groups[7]!="+") then "" else " ; .cell-border-right")
-      val c = (ccap.groups[3] + ccap.groups[5]).trim.substr(0,1)
+      val c = (ccap.groups[3] ++ ccap.groups[5]).trim.substr(0,1)
       val content = if (c=="=") then "===" elif (c=="-") then "---" else ""
-      (ccap.groups[4] + align + borders).parseAttrs("col",content)
+      (ccap.groups[4] ++ align ++ borders).parseAttrs("col",content)
     }
   }
 }

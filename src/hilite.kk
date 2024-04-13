@@ -39,7 +39,7 @@ pub fun hilite( src : string, lang : string ) : maybe<string>
 {
   if (lang=="") return Nothing
   catch( { Just(xhilite(src,lang.toLower,xinitialMode(lang.toLower)).highlighted)  }, fn(exn) { 
-           warning("could not highlight: " + exn.show)
+           warning("could not highlight: " ++ exn.show)
            Nothing
          })
 }
@@ -60,7 +60,7 @@ pub fun hilitePartial( src : string, lang : string, mbMode : maybe<hilitemode> =
     Just( (res.highlighted,res.finalMode) )
    }, 
    fn(exn) { 
-     warning("could not highlight: " + exn.show)
+     warning("could not highlight: " ++ exn.show)
      Nothing
    })
 }
@@ -70,9 +70,9 @@ extern xxregisterLanguage( name : string, definition : string ) : io () {
 }
 
 pub fun registerLanguage( name : string, definition: string ) : io () {
-  catch( { //trace("register: " + name + ": " + fname); 
+  catch( { //trace("register: " ++ name ++ ": " ++ fname); 
            xxregisterLanguage(name.toLower,definition) }, 
-         fn(exn) { println("error: could not register language: " + name  + "\n" + exn.show /* + "\n" + fulldef */ ) } )
+         fn(exn) { println("error: could not register language: " ++ name  ++ "\n" ++ exn.show /* ++ "\n" ++ fulldef */ ) } )
 }
 
 extern xcanHilite( name : string ) : bool {

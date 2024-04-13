@@ -38,8 +38,8 @@ pub fun runCsl(
   citations : list<citeinfo>, bibs : list<fileinfo>, bibstyle : fileinfo, 
   madokoStyle : fileinfo, localeStyle : fileinfo, id : string, attrs0 : string ) : cslresult 
 {
-  val preid = if (id.bool) then id + ":" else ""
-  val attrs = "data-style:'" + bibstyle.filename.stemname + "'; " + attrs0
+  val preid = if (id.bool) then id ++ ":" else ""
+  val attrs = "data-style:'" ++ bibstyle.filename.stemname ++ "'; " ++ attrs0
   makeBiblX( citations.unlist, 
               bibs.unlist, bibstyle, madokoStyle, localeStyle, 
               fn(tex) { parseTex(tex) }, preid, attrs )  

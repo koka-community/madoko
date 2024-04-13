@@ -37,23 +37,23 @@ fun update( options : options, key : string, xvalue : string, mdata : metadata )
   val ivalue = value.parseInt.maybe(~1,id)
   val bvalue = (value!="" && value!="0") 
 
-  //trace("from meta: " + key + "=" + value)
+  //trace("from meta: " ++ key ++ "=" ++ value)
   if   (key=="title") then options(title=value)
   elif (key=="prelude") then options(prelude=value)
-  elif (key=="css") then options(css=if (value=="") then "" else options.css + ";" + value)
-  elif (key=="html-meta") then options(htmlMeta=if (value=="") then "" else options.htmlMeta + ";" + value)
-  elif (key=="script") then options(scripts=if (value=="") then "" else options.scripts + ";" + value)
-  elif (key=="script-") then options(scriptsx=if (value=="") then "" else options.scriptsx + ";" + value)
-  elif (key=="package") then options(packages=if (value=="") then "" else options.packages + ";" + value)
-  elif (key=="package-") then options(packagesx=if (value=="") then "" else options.packagesx + ";" + value)
+  elif (key=="css") then options(css=if (value=="") then "" else options.css ++ ";" ++ value)
+  elif (key=="html-meta") then options(htmlMeta=if (value=="") then "" else options.htmlMeta ++ ";" ++ value)
+  elif (key=="script") then options(scripts=if (value=="") then "" else options.scripts ++ ";" ++ value)
+  elif (key=="script-") then options(scriptsx=if (value=="") then "" else options.scriptsx ++ ";" ++ value)
+  elif (key=="package") then options(packages=if (value=="") then "" else options.packages ++ ";" ++ value)
+  elif (key=="package-") then options(packagesx=if (value=="") then "" else options.packagesx ++ ";" ++ value)
   elif (key=="toc-depth" && ivalue >= 0) then options(tocDepth = ivalue)
   elif ((key=="heading-depth" || key=="header-depth") && ivalue >= 0) then options(headingDepth = ivalue)
   elif ((key=="heading-base" || key=="header-base" || key=="base-header-level") && ivalue >= 0) then options(headingBase = ivalue)
   elif (key=="document-class" || key=="doc-class") then options(docClass=value)
-  //elif (key=="bib" || key=="bibliography" || key=="bib-data") options(bib=if (value=="") then "" else options.bib + ";" + value)
+  //elif (key=="bib" || key=="bibliography" || key=="bib-data") options(bib=if (value=="") then "" else options.bib ++ ";" ++ value)
   elif (key=="bib" || key=="bibliography" || key=="bib-data") then {
     if (value!="") then log("files", value.changeExt(".bib"))
-    options(bib=if (value=="") then "" else options.bib + ";" + value);
+    options(bib=if (value=="") then "" else options.bib ++ ";" ++ value);
   }
   elif (key=="bib-style" || key=="biblio-style" || key=="bibliography-style") then {
     if (value.extname!="" || value.dirname!="") then { // we need to log here since we don't always 'read' the bst if the bibs are unchanged
@@ -94,7 +94,7 @@ fun update( options : options, key : string, xvalue : string, mdata : metadata )
     elif (lvalue=="") then options
     else match(parseCiteStyle(lvalue)) {
       Nothing -> {
-        warning("unrecognized citation style: " + lvalue)
+        warning("unrecognized citation style: " ++ lvalue)
         options
       }
       Just(cs) -> options(citestyle=Just(cs))
@@ -105,7 +105,7 @@ fun update( options : options, key : string, xvalue : string, mdata : metadata )
   elif (key=="section-depth") then options(sectionMax=ivalue)
   elif (key=="section-base") then options(sectionBase=ivalue)
   elif (key=="highlight" || key=="colorize") then options(highlight=if (value=="") then False else True)
-  elif (key=="highlight-language" || key=="colorizer") then options(hilitelang=if (value=="") then "" else options.hilitelang + ";" + value)
+  elif (key=="highlight-language" || key=="colorizer") then options(hilitelang=if (value=="") then "" else options.hilitelang ++ ";" ++ value)
   elif (key=="rebuild") then options(rebuild=(value != ""))
   elif (key=="star-bold") then options(starBold=(value!=""))
   elif (key=="line-no") then options(lineNo=ivalue)
@@ -124,13 +124,13 @@ fun update( options : options, key : string, xvalue : string, mdata : metadata )
 
 
 fun appendNL(s : string, t : string ) : string {
-  if (s == "" || s.endsWith("\n")) then s + t else s + "\n" + t
+  if (s == "" || s.endsWith("\n")) then s ++ t else s ++ "\n" ++ t
 }
 
 
 fun appendValue( xs : list<string>, x : string, sep : string = "&br;" ) : list<string> {
   match(xs.reverse) {
     Nil -> [x]
-    Cons(y,yy) -> if (y=="") then Cons(x,yy).reverse else Cons(y + sep + x,yy).reverse
+    Cons(y,yy) -> if (y=="") then Cons(x,yy).reverse else Cons(y ++ sep ++ x,yy).reverse
   }
 }

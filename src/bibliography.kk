@@ -22,7 +22,7 @@ import runcsl
 
 
 pub fun extractCitestyle( opts : options, outName : string ) : io options {
-  val auxName  = outName.noext + "-bib.bbl.mdk" // the first..
+  val auxName  = outName.noext ++ "-bib.bbl.mdk" // the first..
   val contents = readTextFileDef( auxName, "", False )
   match (contents.find(rxCiteStyle)) {
     Nothing   -> opts
@@ -39,12 +39,12 @@ val rxCiteStyle = regex(r#"\bcite\-style *: *"([^"]+)""#)
 
 // Generate CSL bibliography; return `True` if successful
 fun genBibCsl( aux : auxinfo, outdir, searchDirs, mopts : options ) : io bool {
-  mopts.print("bibliography " + (if (aux.auxid.bool) then "(" + aux.auxid + ") " else "") + "style: " + aux.style.styleName.stemname)
+  mopts.print("bibliography " ++ (if (aux.auxid.bool) then "(" ++ aux.auxid ++ ") " else "") ++ "style: " ++ aux.style.styleName.stemname)
   val searchDirsCsl = searchDirs.concat( fn(dir) { [dir,combine(dir,"csl")] } )
   val searchDirsLoc = searchDirs.concat( fn(dir) { [dir,combine(dir,"locales")] } )
 
   val madokoStyle = searchReadTextFile( "madoko.csl", searchDirsCsl, "", True, mopts)
-  val locale      = searchReadTextFile( "locales-" + aux.style.locale + ".xml",searchDirsLoc, "", True, mopts )
+  val locale      = searchReadTextFile( "locales-" ++ aux.style.locale ++ ".xml",searchDirsLoc, "", True, mopts )
   val auxcontents = readTextFileDef(aux.auxfile,"",False)
   val bibfiles    = mopts.bib.splitPaths.map( fn(bib) { 
                       searchReadTextFile(bib, searchDirs,".bib",True,mopts) 
@@ -54,7 +54,7 @@ fun genBibCsl( aux : auxinfo, outdir, searchDirs, mopts : options ) : io bool {
   val cslStyle    = match (cslStyle0.contents.find(rxIndepParent)) {
                       Nothing   -> cslStyle0
                       Just(cap) -> {
-                        mopts.print("      parent style: " + cap.groups[1])
+                        mopts.print("      parent style: " ++ cap.groups[1])
                         searchReadTextFile( cap.groups[1], searchDirsCsl, ".csl", True, mopts )
                       }
                     }
@@ -84,7 +84,7 @@ val rxIndepParent = regex(r#"<link *href *= *"(?:https?://www.zotero.org/styles/
 fun searchReadTextFile( fname, searchDirs, ext, required, mopts ) : io fileinfo {
   match(trySearchReadTextFile(fname,searchDirs,ext,required)) {
     Nothing -> {
-      mopts.printErr("warning: unable to read: " + fname.defaultExt(ext))
+      mopts.printErr("warning: unable to read: " ++ fname.defaultExt(ext))
       Fileinfo(fname,"")
     }
     Just((fullname,contents)) -> Fileinfo(fullname,contents)
@@ -137,12 +137,12 @@ pub fun genBibtex( runBibtex, auxInfos : list<auxinfo>, outdir, searchDirs, mopt
         val bblname = bib.auxfile.changeExt(".bbl")
         match (tryReadTextFile(bblname, True)) {
           Left -> {
-            warning("Unable to read bibliography file: " + bblname)
+            warning("Unable to read bibliography file: " ++ bblname)
             False
           }
           Right(bbl) -> {
             val bibl    = parseTex(bbl,bib.auxid,mopts.citestyle.maybe(citeNumeric,id),bib.style.styleName.stemname)
-            val mdkname = bblname + ".mdk"
+            val mdkname = bblname ++ ".mdk"
             writeTextFileSync(mdkname,bibl)  
             writeFinalAux(bib.auxfile)            
           }
@@ -166,14 +166,14 @@ struct auxinfo(
 )
 
 pub fun writeCitationsData( citeData : string, outName : string, searchDirs : list<string>, bibNames : list<string>, opts : options ) : io list<auxinfo> {
-  val defaultAux = outName.noext + "-bib.aux"
+  val defaultAux = outName.noext ++ "-bib.aux"
   val cites = splitCiteData( citeData, opts ) // split citations over multiple bibliographies
   val bibData = createBibData( outName.dirname, searchDirs, bibNames, opts.citestyle ) // copy bib files and compute md5's  
   cites.filterMap( fn(kv) {
     val (auxStem,(auxData,bibStyle)) = kv
-    val auxName = outName.noext + "-bib"+ (if (auxStem=="") then "" else "-" + auxStem) + ".aux"
+    val auxName = outName.noext ++ "-bib"+ (if (auxStem=="") then "" else "-" ++ auxStem) ++ ".aux"
     val changed = writeCitations(auxData, bibData, bibStyle, auxName, opts)  // write aux files and compare to final.aux for changes
-    //trace("bib: " + auxName + ", changed: " + changed.show + "\n" + auxData.indent(2))
+    //trace("bib: " ++ auxName ++ ", changed: " ++ changed.show ++ "\n" ++ auxData.indent(2))
     if (changed || opts.rebuild) then Just( Auxinfo(auxName,auxStem,bibStyle) ) else Nothing
   })
 }
@@ -193,7 +193,7 @@ fun splitCiteData( citeData : string, opts : options ) : io list<(string,(string
       val auxRaw  = citeData.substr(0,cap.index) // allow backward citations too??
       val auxData = 
         if (auxName.isEmpty) then auxRaw 
-         else auxRaw.replaceAll("\\citation{" + auxName + ":", "\\citation{")
+         else auxRaw.replaceAll("\\citation{" ++ auxName ++ ":", "\\citation{")
       val stylex = if (cap.groups[2].bool) then Csl(cap.groups[2],cap.groups[4])
                    elif (cap.groups[3].bool) then Bst(cap.groups[3],cap.groups[4])
                    else style
@@ -208,7 +208,7 @@ fun auxInsert( auxName : string, auxData : string, style : bibstyle, xs : list<(
     Nil -> [(auxName,(auxData,style))]
     Cons(x,xx) -> {
       if (x.fst == auxName) 
-       then Cons( (x.fst, (auxData + "\n" + x.snd.fst, style)), xx)
+       then Cons( (x.fst, (auxData ++ "\n" ++ x.snd.fst, style)), xx)
        else Cons( x, auxInsert(auxName,auxData,style, xx) )
     }
   }
@@ -220,46 +220,46 @@ fun createBibData( auxDir : string, searchDirs : list<string>, bibNames : list<s
   val (bibStems,bibContents) = bibNames.map( fn(bibName) {
     match(trySearchReadTextFile(bibName,searchDirs,".bib")) {
       Nothing -> {
-        warning( "unable to find bibliography file: " + bibName )
+        warning( "unable to find bibliography file: " ++ bibName )
         []
       }
       Just((bibFile,content)) -> {
-        // trace("bib: found: " + bibFile)
+        // trace("bib: found: " ++ bibFile)
         if (dirname(bibFile) != auxDir) then {
           if (!(tryWriteTextFile( combine(auxDir,basename(bibFile)), content))) then {
-            println("warning: unable to copy bibliography file to output directory: " + bibName)
+            println("warning: unable to copy bibliography file to output directory: " ++ bibName)
           }
         }
-        // "\\bibdata{" + stemname(bibFile) + "}\n%md5:" + md5(content) + "\n"
+        // "\\bibdata{" ++ stemname(bibFile) ++ "}\n%md5:" ++ md5(content) ++ "\n"
         [(stemname(bibFile),content)]
       }
     }
   }).concat.unzip
   val digest = bibContents.join.md5  
-  "\\bibdata{" + bibStems.join(",") + "}\n%md5:" + digest + 
-    (match(mcs) { Nothing -> ""; Just(cs) -> "\n%\\citestyle{" + cs.show + "}" }) + "\n"
+  "\\bibdata{" ++ bibStems.join(",") ++ "}\n%md5:" ++ digest ++ 
+    (match(mcs) { Nothing -> ""; Just(cs) -> "\n%\\citestyle{" ++ cs.show ++ "}" }) ++ "\n"
 }
 
 // Write citations to an aux file. Returns "True" if the bibliography data changed.
 fun writeCitations( auxData : string, bibData : string, bibStyle: bibstyle, auxName : string, opts : options ) : io (bool) {
   val oldData = readTextFileDef(auxName.changeExt(".final.aux"),"",False)
-  val newData = "% Generated by Madoko, version " + opts.version + "\n" + auxData + "\n" +
+  val newData = "% Generated by Madoko, version " ++ opts.version ++ "\n" ++ auxData ++ "\n" +
                   (match(bibStyle) {
-                    Bst(style,locale) -> "\\bibstyle{" + style.stemname + "}\n%\\biblocale{" + locale + "}\n"
-                    Csl(style,locale) -> "%\\cslstyle{" + style + "}\n%\\csllocale{" + locale + "}\n"
+                    Bst(style,locale) -> "\\bibstyle{" ++ style.stemname ++ "}\n%\\biblocale{" ++ locale ++ "}\n"
+                    Csl(style,locale) -> "%\\cslstyle{" ++ style ++ "}\n%\\csllocale{" ++ locale ++ "}\n"
                   }) 
-                  + bibData
+                  ++ bibData
                   
   if (newData != oldData) then {
     if (!(tryWriteTextFile(auxName, newData))) then {
-      opts.printErr("error: unable to write citations: " + auxName )
+      opts.printErr("error: unable to write citations: " ++ auxName )
     }
   }
   
   val oldCites = oldData.findAll(rxCite).list.map(fn(cap) { cap.matched }).join("\n");
   val newCites = newData.findAll(rxCite).list.map(fn(cap) { cap.matched }).join("\n");
-  //trace("oldCites: " + oldCites)
-  //trace("newCites: " + newCites)
+  //trace("oldCites: " ++ oldCites)
+  //trace("newCites: " ++ newCites)
   return (oldCites != newCites)
 }
 val rxCite = regex(r#"^(?:(?:%?\\(citation|bibstyle|biblocale|bibdata|cslstyle|cslocale|citestyle)\b.*)|(?:%md5:.*))$"#,multiline=True)

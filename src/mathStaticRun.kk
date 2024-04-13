@@ -69,15 +69,15 @@ pub fun runMathStatic( content : string, inName: string, outName : string,
 fun checkDviSvgVersion( opts : options, texNamePlain, texNameFull, cont : (options) -> io () ) : io () {
   if (opts.math.getMathRender.isSvg || opts.math.getMathRenderFull.isSvg) then {
     val dvisvgm = opts.math.dvisvg.quote
-    system(dvisvgm + " --version", fn(err,stdout,stderr) {
+    system(dvisvgm ++ " --version", fn(err,stdout,stderr) {
       val version = match(stdout.find(rxVersion)) {
         Nothing -> 0
         Just(cap) -> {
-          (100*cap.groups[1].parseIntDefault(0)) + cap.groups[2].parseIntDefault(0)
+          (100*cap.groups[1].parseIntDefault(0)) ++ cap.groups[2].parseIntDefault(0)
         }
       }
       if (err!=0 || version < 116) then {
-        opts.printErr("warning: cannot use " + dvisvgm + "; ensure you have at least version 1.16")
+        opts.printErr("warning: cannot use " ++ dvisvgm ++ "; ensure you have at least version 1.16")
         opts.printErr(" the latest version is available at: http://dvisvgm.bplaced.net/downloads")
         opts.printErr(" for Windows with TexLive 2016, see: madoko.net/doc/reference.html#dvisvgm")
         opts.printErr(" switching to use png images for math (instead of svg)")
@@ -114,8 +114,8 @@ fun mathSnippetsRender( mode: mathkind, mrender : mathrender, texcmd: string,
                             continue : (string) -> io () ) : io ()
 {
   fun rendermsg(ext) {
-    xopts.print( "running " + (texcmd.stemname + " on math...").fill(19) + "(" +
-                  mode.show.fill(5) + " -> " + ext.substr(1) + " -> " + mrender.show + ")"  )
+    xopts.print( "running " ++ (texcmd.stemname ++ " on math...").fill(19) ++ "(" +
+                  mode.show.fill(5) ++ " -> " ++ ext.substr(1) ++ " -> " ++ mrender.show ++ ")"  )
   }
   if (mrender.isSvg) then {
     // run for svg: we need a dvi or xdv
@@ -142,27 +142,27 @@ fun mathSnippetsRender( mode: mathkind, mrender : mathrender, texcmd: string,
     // use dvips and ps2pdf to get a pdf
     val notfound = "set either the 'Math Mode: Mathjax' or the 'Latex: <cmd>' key in the metadata"
     val (texargs,dviext) = texcmd.texToDvi // induce it to produce .dvi
-    rendermsg(dviext + " -> ps -> pdf")
+    rendermsg(dviext ++ " -> ps -> pdf")
     runLaTeX( srcName, texName, texcmd, texargs, xopts, content, notfound, 0, False, fn(err1) {
       if (err1!=0) then continue("")
       val dir = texName.dirname
       val stem = texName.stemname
-      val dvipsCmd = xopts.math.dvips.quote + " -Ppdf -G0 " + (stem + ".dvi").quote
-      val ps2pdfCmd = xopts.math.ps2pdf.quote + " " + (stem + ".ps").quote
+      val dvipsCmd = xopts.math.dvips.quote ++ " -Ppdf -G0 " ++ (stem ++ ".dvi").quote
+      val ps2pdfCmd = xopts.math.ps2pdf.quote ++ " " ++ (stem ++ ".ps").quote
       xopts.print("generating pdf from dvi...")
-      xopts.print(">" + dvipsCmd, 3)
+      xopts.print(">" ++ dvipsCmd, 3)
       system(dvipsCmd,fn(err,stdout,stderr) {
         if (err != 0) then {
-          xopts.printErr("> " + dvipsCmd)
-          xopts.printErr("error: failure while typesetting math: \n" + stdout + stderr)
+          xopts.printErr("> " ++ dvipsCmd)
+          xopts.printErr("error: failure while typesetting math: \n" ++ stdout ++ stderr)
           continue("")
         }
         else {
-          xopts.print(">" + ps2pdfCmd, 3)
+          xopts.print(">" ++ ps2pdfCmd, 3)
           system(ps2pdfCmd, fn(err2,stdout2,stderr2) {
             if (err2 != 0) then {
-              xopts.printErr("> " + ps2pdfCmd)
-              xopts.printErr("error: failure while typesetting math: \n" + stdout2 + stderr2)
+              xopts.printErr("> " ++ ps2pdfCmd)
+              xopts.printErr("error: failure while typesetting math: \n" ++ stdout2 ++ stderr2)
               continue("")
             }
             else {
@@ -202,14 +202,14 @@ fun isPlainLatex( path : string ) : bool {
 fun pagesShow( pages : pages ) : string {
   pages.map( fn(rng) {
     val (lo,hi) = rng
-    lo.show + (if (lo>=hi) then "" else "-" + hi.show)
+    lo.show ++ (if (lo>=hi) then "" else "-" ++ hi.show)
     }).join(",")
 }
 
 fun dvipngPages( pages : pages ) : string {
   pages.map( fn(rng) {
     val (lo,hi) = rng
-    "-pp " + lo.show + (if (lo>=hi) then "" else "-" + hi.show)
+    "-pp " ++ lo.show ++ (if (lo>=hi) then "" else "-" ++ hi.show)
     }).join(" ")
 }
 
@@ -240,22 +240,22 @@ fun splitPages(pages : pages, concurrency : int) : list<pages> {
 }
 
 fun dvisvgPages( pages : pages ) : string {
-  "-p" + pages.map( fn(rng) {
+  "-p" ++ pages.map( fn(rng) {
       val (lo,hi) = rng
-      lo.show + (if (lo>=hi) then "" else "-" + hi.show)
+      lo.show ++ (if (lo>=hi) then "" else "-" ++ hi.show)
     }).join(",")
 }
 
 fun convertPages( pages : pages ) : string {
-  "[" + pages.map( fn(rng) {
+  "[" ++ pages.map( fn(rng) {
     val (lo,hi) = rng
-    (lo - 1).show + (if (lo>=hi) then "" else "-" + (hi - 1).show)
-    }).join(",") + "]"
+    (lo - 1).show ++ (if (lo>=hi) then "" else "-" ++ (hi - 1).show)
+    }).join(",") ++ "]"
 }
 
 fun convertSuffix( pages : pages ) : string {
   match(pages) {
-    Cons((lo,hi)) | lo==hi -> "-" + (lo - 1).show
+    Cons((lo,hi)) | lo==hi -> "-" ++ (lo - 1).show
     _ -> ""
   }
 }
@@ -273,7 +273,7 @@ fun mathToImg( namePlain : string, nameFull : string, xopts : options,
   // make sure the output directory exists
   val outDir = combine(namePlain.dirname,xopts.math.imgDir)
   if (!(fexistsSync(outDir))) then {
-    xopts.print("create image directory: " + outDir)
+    xopts.print("create image directory: " ++ outDir)
     mkdirp(outDir)
   }
 
@@ -295,33 +295,33 @@ fun mathConvImgCmd( mode : mathkind, fname : string, mrender : mathrender, opts 
       // add 0.2pt (~0.07mm of extra bounding box for better rendering of svg's)
       val fuzz = 0.2
       val cmd = splitPages(pages,opts.concurrency).map(fn(xpages) {
-                  opts.dvisvg.quote +
+                  opts.dvisvg.quote ++
                     (if (opts.svgFontFormat=="" || opts.svgFontFormat=="none")
                       then " -n"
                      elif (opts.svgFontFormat=="svg")
                       then ""
-                      else " --font-format=" + opts.svgFontFormat.quote) +
-                    (if (fuzz > 0.0) then " -b" + fuzz.showFixed(1) + "pt" else "") +
+                      else " --font-format=" ++ opts.svgFontFormat.quote) ++
+                    (if (fuzz > 0.0) then " -b" ++ fuzz.showFixed(1) ++ "pt" else "") ++
                     (if (opts.svgBBoxExact) then " -e" else "") +
-                    " -a -j -v3 -d" + opts.svgPrec.show + " " +
+                    " -a -j -v3 -d" ++ opts.svgPrec.show ++ " " +
                     dvisvgPages(xpages) +
-                    " -o " + (baseImg + "-%1p.svg").quote +
-                    " " + fname.basename.quote
+                    " -o " ++ (baseImg ++ "-%1p.svg").quote +
+                    " " ++ fname.basename.quote
                 }).join(";")
       (cmd,0,fuzz)
     }
     Png | fname.extname==".dvi" -> {
-      val cmd = opts.dvipng.quote + " -T tight -z9 -bg Transparent" +
-                  " -D" + opts.dpi.show +
-                  " " + dvipngPages(pages) +
-                  " -o " + (baseImg + "-%d.png").quote +
-                  " " + fname.stemname.quote
+      val cmd = opts.dvipng.quote ++ " -T tight -z9 -bg Transparent" ++
+                  " -D" ++ opts.dpi.show ++
+                  " " ++ dvipngPages(pages) ++
+                  " -o " ++ (baseImg ++ "-%d.png").quote ++
+                  " " ++ fname.stemname.quote
       (cmd,0,0.0)
     }
     Png -> { // extension should be pdf
-      val cmd = opts.convert.quote + " -trim -density " + opts.dpi.show + " " +
-                  (fname.basename + pages.convertPages).quote + " " +
-                  (baseImg + pages.convertSuffix + ".png").quote
+      val cmd = opts.convert.quote ++ " -trim -density " ++ opts.dpi.show ++ " " ++
+                  (fname.basename ++ pages.convertPages).quote ++ " " ++
+                  (baseImg ++ pages.convertSuffix ++ ".png").quote
       (cmd,~1,0.0)
     }
   }
@@ -332,14 +332,14 @@ fun mathCmdToImg( cmd : string, dir : string, mode : mathkind, pages : pages, xo
 {
   if (pages.isNil) return continue(0)
 
-  xopts.print("generating math images...  (" + mode.show.fill(5) + ") (" + pages.pagesShow + ") (concurrency " + xopts.math.concurrency.show + ")")
-  xopts.print("> " + cmd,3)
+  xopts.print("generating math images...  (" ++ mode.show.fill(5) ++ ") (" ++ pages.pagesShow ++ ") (concurrency " ++ xopts.math.concurrency.show ++ ")")
+  xopts.print("> " ++ cmd,3)
   system(cmd,fn(err2,stdout2,stderr2) {
     //trace("done system cmd")
-    val output = stdout2 + stderr2
+    val output = stdout2 ++ stderr2
     if (err2 != 0) then {
-      xopts.printErr("> " + cmd)
-      xopts.printErr("error: failure while typesetting math: \n" + output)
+      xopts.printErr("> " ++ cmd)
+      xopts.printErr("error: failure while typesetting math: \n" ++ output)
       if (output.contains("Invalid Parameter -")) then {
         xopts.printErr("hint: perhaps you forgot to install ImageMagick?\n      (http://www.imagemagick.org/script/binary-releases.php)")
       }
@@ -401,16 +401,16 @@ fun extendDim( plainPages : pages, fullPages : pages,
       Just(cap) -> {
         val pageNo = cap.groups[2].parseInt.maybe(0,id)
         val digest = cap.groups[3]
-        val imageStem = fname.stemname + "-" + (pageNo + pageAdj).show
+        val imageStem = fname.stemname ++ "-" ++ (pageNo ++ pageAdj).show
         val imageName = combine(opts.math.imgDir, imageStem.changeExt(render.show) )
         val imageFile = combine(dimxFile.dirname,imageName)
-        //trace("read image: " + pageNo.show + ": " + imageFile + ": " + imageFile)
+        //trace("read image: " ++ pageNo.show ++ ": " ++ imageFile ++ ": " ++ imageFile)
 
         val (iwidth,iheight,size,embed)
           = match(dim[digest]) {
               Just(mi) | !(pageNo.inside(pages))
                 -> {
-                  //trace("known image: " + pageNo.show + ": " + imageFile + ": " + digest)
+                  //trace("known image: " ++ pageNo.show ++ ": " ++ imageFile ++ ": " ++ digest)
                   (mi.iwidth,mi.iheight,mi.size,mi.originalData)
                 }
               _ -> {
@@ -423,7 +423,7 @@ fun extendDim( plainPages : pages, fullPages : pages,
                       analyzeImageSvg( imageFile, opts, mode, digest )
                     }
                   }
-                val imageDigestFile = combine(imageFile.dirname,"math-" + digest + imageFile.extname)
+                val imageDigestFile = combine(imageFile.dirname,"math-" ++ digest ++ imageFile.extname)
                 tryUnlinkSync(imageDigestFile)
                 if (res.field4=="" && res.thd>0) then {
                   // give robust name
@@ -444,8 +444,8 @@ fun extendDim( plainPages : pages, fullPages : pages,
           embedSize  := embedSize + size
           embedCount := embedCount + 1
         }
-        cap.groups[1] + "," + iwidth.show + "pt," + iheight.show + "pt," + bboxAdj.show + "pt," +
-          size.show + "," + render.showMime + (if (embed=="") then "" else (", " + embed))
+        cap.groups[1] ++ "," ++ iwidth.show ++ "pt," ++ iheight.show ++ "pt," ++ bboxAdj.show ++ "pt," ++
+          size.show ++ "," ++ render.showMime ++ (if (embed=="") then "" else (", " ++ embed))
       }
     }
   }
@@ -462,9 +462,9 @@ fun extendDim( plainPages : pages, fullPages : pages,
   if (opts.verbose >= 2) then {
     val totalCount = imageCount + embedCount
     val totalSize = imageSize + embedSize
-    opts.print(" math images  : " + imageCount.show.align(4) + " in " + imageSize.showSize, 2 )
-    opts.print(" math embedded: " + embedCount.show.align(4) + " in " + embedSize.showSize, 2 )
-    opts.print(" math total   : " + totalCount.show.align(4) + " in " + totalSize.showSize, 2 )
+    opts.print(" math images  : " ++ imageCount.show.align(4) ++ " in " ++ imageSize.showSize, 2 )
+    opts.print(" math embedded: " ++ embedCount.show.align(4) ++ " in " ++ embedSize.showSize, 2 )
+    opts.print(" math total   : " ++ totalCount.show.align(4) ++ " in " ++ totalSize.showSize, 2 )
   }
   txt
 }
@@ -472,7 +472,7 @@ fun extendDim( plainPages : pages, fullPages : pages,
 fun analyzeImagePng( imageFile, opts : options ) : io (double, double, int, string ) {
   match( tryReadFileSync( imageFile )) {
     Nothing   -> {
-      opts.printErr("error: cannot read: " + imageFile)
+      opts.printErr("error: cannot read: " ++ imageFile)
       (0.0,0.0,0,"") // should not happen?
     }
     Just(buf) -> {
@@ -484,12 +484,12 @@ fun analyzeImagePng( imageFile, opts : options ) : io (double, double, int, stri
       val iheight = pxheight.double / ppt
       val iwidth  = pxwidth.double / ppt
 
-      //trace("image " + imageFile + ": " + pxwidth.show + "," + pxheight.show)
+      //trace("image " ++ imageFile ++ ": " ++ pxwidth.show ++ "," ++ pxheight.show)
       val pngprefix = "data:image/png;base64,"
 
       val embed = if (base64!="" && base64.length + pngprefix.length < opts.math.embedLimit)
-                    then pngprefix + base64 else ""
-      //trace("embed: " + embed.length.show + ", " + opts.math.embedLimit.show)
+                    then pngprefix ++ base64 else ""
+      //trace("embed: " ++ embed.length.show ++ ", " ++ opts.math.embedLimit.show)
       val size = if (embed.isEmpty) then buf.length else embed.length
       (iwidth,iheight,size,embed)
     }
@@ -499,17 +499,17 @@ fun analyzeImagePng( imageFile, opts : options ) : io (double, double, int, stri
 fun analyzeImageSvg( imageFile, opts : options, mode : mathkind, digest : string ) : io (double, double, int, string ) {
   match( tryReadTextFile( imageFile )) {
     Left   -> {
-      opts.printErr("error: cannot read: " + imageFile)
+      opts.printErr("error: cannot read: " ++ imageFile)
       (0.0,0.0,0,"") // should not happen?
     }
     Right(svg1) -> {
       val (iheight,svg2) = svg1.svgExtractDim(rxSvgHeight)
       val (iwidth,svg3)  = svg2.svgExtractDim(rxSvgWidth)
       val svg            = svg3.svgCompress()
-      val encoded        = "data:image/svg+xml;charset=utf8," + svg.encodeGlyphIds(mode).scopeStyles(digest)
-      //trace("svg: " + imageFile + ", height: " + iheight.show + ", width: " + iwidth.show)
+      val encoded        = "data:image/svg+xml;charset=utf8," ++ svg.encodeGlyphIds(mode).scopeStyles(digest)
+      //trace("svg: " ++ imageFile ++ ", height: " ++ iheight.show ++ ", width: " ++ iwidth.show)
       val embed = if (encoded.length < opts.math.embedLimit) then encoded else ""
-      //trace("embed: " + embed.length.show + ", " + opts.math.embedLimit.show)
+      //trace("embed: " ++ embed.length.show ++ ", " ++ opts.math.embedLimit.show)
       val size  = if (embed.isEmpty) then svg.length else embed.length
       (iwidth,iheight,size,embed)
     }
@@ -524,7 +524,7 @@ fun analyzeImageSvg( imageFile, opts : options, mode : mathkind, digest : string
 // Glyph id's are of the form "g<fontid>-<charid>"
 fun encodeGlyphIds( svg : string, mode : mathkind ) : string {
   if (mode.isPlain) return svg
-  svg.replaceAll( rxSvgId, fn(cap) { cap.matched + mode.show } )
+  svg.replaceAll( rxSvgId, fn(cap) { cap.matched ++ mode.show } )
 }
 val rxSvgId = regex(r#"\b(id=['"](?:g)|xlink:href=['"]#g)(?=\d)"#)
 
@@ -532,9 +532,9 @@ val rxSvgId = regex(r#"\b(id=['"](?:g)|xlink:href=['"]#g)(?=\d)"#)
 // can embed multiple inside one HTML file. We use first 6 letters of
 // the digest to uniquely name the SVG group from `page<no>` to `g-<digest>`.
 fun scopeStyles( svg : string, digest : string ) :string {
-  val groupId = "math-" + digest.substr(0,6)
-  val pre     = "#" + groupId
-  svg.replaceAll( rxSvgTextStyle, pre + " $&" ).replace( rxSvgGroupId, "$1" + groupId )
+  val groupId = "math-" ++ digest.substr(0,6)
+  val pre     = "#" ++ groupId
+  svg.replaceAll( rxSvgTextStyle, pre ++ " $&" ).replace( rxSvgGroupId, "$1" ++ groupId )
 }
 val rxSvgTextStyle = regex(r"\btext\.f\d+\s*\{\s*font")
 val rxSvgGroupId   = regex(r#"(<g\s+id=['"])page\d+"#)
@@ -552,7 +552,7 @@ val rxComment = regex(r"<!--[\s\S]*?-->|<\?xml[\s\S]*?\?>|\bversion='1.1'|\bxmln
 fun svgExtractDim( svg : string, rx : regex ) : (double, string) {
   match(svg.find(rx)) {
     Nothing -> (0.0, svg)
-    Just(cap) -> (dimension(cap.groups[1],cap.groups[2]), svg.substr(0,cap.index) + svg.substr(cap.next))
+    Just(cap) -> (dimension(cap.groups[1],cap.groups[2]), svg.substr(0,cap.index) ++ svg.substr(cap.next))
   }
 }
 

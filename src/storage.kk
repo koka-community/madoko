@@ -37,7 +37,7 @@ pub fun checkSandbox( path : string ) : io string {
     Just(roots) -> {
       val xpath = path.normalize.xnormalize
       if (!(xpath.under(roots))) then {
-        error("cannot access files outside the sandbox: " + path)
+        error("cannot access files outside the sandbox: " ++ path)
       }
       return xpath
     }
@@ -171,7 +171,7 @@ extern xfexistsSync( fileName : string ) : io bool {
 }
 
 pub extern relative( from : string, to : string ) : string {
-  cs inline r#"Uri.UnescapeDataString(new Uri(#1 + "\\").MakeRelativeUri(new Uri(#2)).ToString());"#
+  cs inline r#"Uri.UnescapeDataString(new Uri(#1 ++ "\\").MakeRelativeUri(new Uri(#2)).ToString());"#
   js inline "$relative(#1,#2)"
 }
 

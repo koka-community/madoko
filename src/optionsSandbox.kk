@@ -44,7 +44,7 @@ pub fun updateSandbox( options : options, key : string, lvalue : string, value :
     elif (key=="math-concurrency") then options(math = (options.math)(concurrency=if(ivalue >= 1 && ivalue <= 16) then ivalue else options.math.concurrency))
     elif (key=="bibtex") then options(bibtex=safeBibtex(lvalue,options.bibtex))
     else {
-      //  if (options.verbose >= 3) warning("custom metadata key: " + key)
+      //  if (options.verbose >= 3) warning("custom metadata key: " ++ key)
       options
     }
   }

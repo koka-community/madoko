@@ -21,7 +21,7 @@ extern import {
 
 // quote file and command names for shell execution
 pub fun quote( s : string ) : string {
-  "\"" + s + "\""
+  "\"" ++ s ++ "\""
 }
 
 pub fun system( cmd : string, callback : (int,string,string) -> <io|e> (), timeout : int = 0, cwd : string = "", env : list<(string,string)> = []) : <io|e> () {

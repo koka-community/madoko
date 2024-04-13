@@ -39,44 +39,44 @@ fun concurrent( tasks : list<(cont:(int) -> io ()) -> io ()>, continue : (int) -
 fun mathHeader( xopts : options, mode : mathkind ) : string
 {
   val mrender = xopts.math.getMathRender(mode)
-  val deps    = ["% MathMode: " + mode.show,
-                 "MathRender: " + mrender.show,
-                 "MathDpi: " + xopts.math.dpi.show, // for convience to easily rebuild math we include it always
-                 "MathEmbedLimit: " + xopts.math.embedLimit.show,
-                 "MathScale: " + xopts.math.getMathScale(mrender).show,
-                 "MathBaseline: " + xopts.math.baseline.show,
-                 "MathDocClass: " + xopts.math.docClass,
-                 "MathImgDir: " + xopts.math.imgDir,
-                 "MathLatex: " + (if (mode.isPlain) then xopts.getMathLatex else xopts.getMathLatexFull),
+  val deps    = ["% MathMode: " ++ mode.show,
+                 "MathRender: " ++ mrender.show,
+                 "MathDpi: " ++ xopts.math.dpi.show, // for convience to easily rebuild math we include it always
+                 "MathEmbedLimit: " ++ xopts.math.embedLimit.show,
+                 "MathScale: " ++ xopts.math.getMathScale(mrender).show,
+                 "MathBaseline: " ++ xopts.math.baseline.show,
+                 "MathDocClass: " ++ xopts.math.docClass,
+                 "MathImgDir: " ++ xopts.math.imgDir,
+                 "MathLatex: " ++ (if (mode.isPlain) then xopts.getMathLatex else xopts.getMathLatexFull),
                 ] +
                 (match(mrender) {
                   Svg -> [
-                    "MathSvgFontFormat: " + xopts.math.svgFontFormat.show,
-                    "MathSvgSharePaths: " + xopts.math.svgShare.show,
-                    "MathSvgPrecision: " + xopts.math.svgPrec.show,
-                    "MathSvgBBoxExact: " + xopts.math.svgBBoxExact.show,
-                    "Dvisvg: " + xopts.math.dvisvg
+                    "MathSvgFontFormat: " ++ xopts.math.svgFontFormat.show,
+                    "MathSvgSharePaths: " ++ xopts.math.svgShare.show,
+                    "MathSvgPrecision: " ++ xopts.math.svgPrec.show,
+                    "MathSvgBBoxExact: " ++ xopts.math.svgBBoxExact.show,
+                    "Dvisvg: " ++ xopts.math.dvisvg
                   ]
                   Png -> [
-                   "Dvipng: " + xopts.math.dvipng,
-                   "Convert: " + xopts.math.convert,
-                   "Dvips: " + xopts.math.dvips,
-                   "Ps2pdf: " + xopts.math.ps2pdf,
+                   "Dvipng: " ++ xopts.math.dvipng,
+                   "Convert: " ++ xopts.math.convert,
+                   "Dvips: " ++ xopts.math.dvips,
+                   "Ps2pdf: " ++ xopts.math.ps2pdf,
                   ]
                 })
 
-  deps.join(", ") + "\n"
+  deps.join(", ") ++ "\n"
 }
 
 fun mathContent( xopts : options, mode : mathkind, body : string = "" ) : string {
   val opts = if (xopts.math.docClass!="") then xopts(docClass=xopts.math.docClass) else xopts
-  val xbody = "\\begin{mdSnippets}\n" + body + "\n\\end{mdSnippets}"
-  opts.mathHeader(mode) + fmtLatexMathFull(mode,xbody,opts)
+  val xbody = "\\begin{mdSnippets}\n" ++ body ++ "\n\\end{mdSnippets}"
+  opts.mathHeader(mode) ++ fmtLatexMathFull(mode,xbody,opts)
 }
 
 fun mathFormat( xopts : options, mode :mathkind, math : string, outName : string ) : (string,string,string)
 {
-  val texName = outName.appendStem("-math-" + mode.show).changeExt(".tex")
+  val texName = outName.appendStem("-math-" ++ mode.show).changeExt(".tex")
   val texFinalName = texName.changeExt(".final.tex")
   (texName,texFinalName,mathContent(xopts,mode,math))
 }
@@ -103,8 +103,8 @@ pub fun mathStatic( mathPlain : string, mathFull : string,
   /*
   if (outMathPlain != oldMathPlain) {
     trace("dvi differs!")
-    trace("old: " + oldMathPlain)
-    trace("new: " + outMathPlain)
+    trace("old: " ++ oldMathPlain)
+    trace("new: " ++ outMathPlain)
   }
   */
   val dimxName = inName.changeExt(".dimx")
@@ -114,11 +114,11 @@ pub fun mathStatic( mathPlain : string, mathFull : string,
   xopts.print("rendering math.")
   if ((outMathPlain != oldMathPlain || xopts.rebuild || !fexistsSync(texNamePlain)) &&
       !(tryWriteTextFile(texNamePlain,outMathPlain))) then {
-    xopts.printErr("error: unable to write: " + texNamePlain)
+    xopts.printErr("error: unable to write: " ++ texNamePlain)
     return continue(Nothing)
   }
   if ((outMathFull != oldMathFull || xopts.rebuild || !fexistsSync(texNameFull)) && !(tryWriteTextFile(texNameFull,outMathFull))) then {
-    xopts.printErr("error: unable to write: " + texNameFull)
+    xopts.printErr("error: unable to write: " ++ texNameFull)
     return continue(Nothing)
   }
 
@@ -169,7 +169,7 @@ fun compress( pages : list<int>, lo : int = ~1, n : int = 0 ) : pages {
     Cons(p,ps) -> {
       if (p==lo+n+1)
        then compress(ps,lo,n+1)
-       else range(lo,n) + compress(ps,p,0)
+       else range(lo,n) ++ compress(ps,p,0)
     }
   }
 }

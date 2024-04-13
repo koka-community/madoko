@@ -18,7 +18,7 @@ import expression
 pub fun parseAttrs( attrStr : string, elemName : string = "", source : string = "" ) : attrs {
   if (attrStr == "" && elemName == "" && source=="") return attrsNone
   val attrs0 = Attrs() // source=source,classes=if (className=="") then [] else [className])
-  attrs0.extendAttrs( (if (elemName!="") then "elem:'" + elemName + "'; " else "") + attrStr, source )
+  attrs0.extendAttrs( (if (elemName!="") then "elem:'" ++ elemName ++ "'; " else "") ++ attrStr, source )
 }
 
 pub fun mergeDefault( attrs : attrs, def : attrs ) : attrs {
@@ -38,8 +38,8 @@ struct pattern(
 )
 
 fun show( p : pattern ) {
-  "~" + p.elem + "#" + p.name + "." +  p.classes.join(".") + 
-   p.attrselectors.map(fn(e) { "[" + e.expression/show + "]" }).join
+  "~" ++ p.elem ++ "#" ++ p.name ++ "." ++  p.classes.join(".") ++
+   p.attrselectors.map(fn(e) { "[" ++ e.expression/show ++ "]" }).join
 }
 
 fun makePattern( elem : string = "", name : string = "", 
@@ -61,14 +61,14 @@ pub fun rulesFromMeta( metadata : list<(string,string)> ) : rules {
     if (key.startsWith("~") || key.startsWith("#") || key.startsWith(".")) then {
       match(key.find(rxPattern)) {
         Nothing -> {
-          warning("illegal pattern: " + key)
+          warning("illegal pattern: " ++ key)
           []
         }
         Just(cap) -> {
           val attrsels = parseAttrSelectors(cap.groups[4])
           val classes  = cap.groups[3].split(".").list
           val pat = makePattern( cap.groups[1], cap.groups[2], classes, attrsels )
-          // trace("pattern: " + key + " -> " + pat.show )
+          // trace("pattern: " ++ key ++ " -> " ++ pat.show )
           [(pat,value)]
         }
       }
@@ -104,7 +104,7 @@ fun getMatches( rules : list<(pattern,string)>, attrs : attrs, name : string, el
   val newrules = rules.filterx( fn(rule) {
     val (pat,value) = rule
     if (pat.matches(elemName,name,attrs)) then {
-      //trace("matched: weight:" + pat.weight.show + ": " + makePattern(elemName,name,attrs.classes).show + " to rule " + pat.show + ": " + value.substr(0,80))
+      //trace("matched: weight:" ++ pat.weight.show ++ ": " ++ makePattern(elemName,name,attrs.classes).show ++ " to rule " ++ pat.show ++ ": " ++ value.substr(0,80))
       def := def.insert(pat.weight, value)
       False
     }
@@ -159,7 +159,7 @@ fun filterx( xs : list<a>, pred : a -> e bool ) : e list<a>
 pub fun matchRules( rules : rules, elementName : string, attrs : attrs ) : attrs 
 {
   if (!(attrs.common/defaults)) return attrs;
-  val extra = ["#" + attrs.name.definitionId, "~" + elementName.definitionId]
+  val extra = ["#" ++ attrs.name.definitionId, "~" ++ elementName.definitionId]
   applyRules(peano10, rules.values, attrs, rules.values.getMatches(attrs,dict(),extra) );
 }
 
@@ -176,9 +176,9 @@ fun applyRules(p : peano, defaults : dict<string>, attrs : attrs, dv : (string,d
 }
 
 fun getMatches( defaults: dict<string>, attrs : attrs, visited : dict<bool> = dict(), extra : list<string> = [] ) : (string, dict<bool>) {
-  val keys0 = extra + attrs.classes.map( fn(cname) { "." + cname.definitionId } ) 
+  val keys0 = extra ++ attrs.classes.map( fn(cname) { "." ++ cname.definitionId } ) 
   val keys1 = keys0.filter( fn(key) { visited[key].isNothing } )
-  val visited1 = visited + keys1.map( fn(key) { (key,True) } ).dict
+  val visited1 = visited ++ keys1.map( fn(key) { (key,True) } ).dict
   val def = keys1.map( fn(key) { defaults[key] }).filter(isJust).map(mbstring).join(" ; ")
   return (def,visited1)
 }
@@ -188,7 +188,7 @@ pub fun extendAttrs( attrs0 : attrs, attrsStr : string, source : string ) : attr
 {
   if (attrsStr=="" && source=="") then return attrs0
   val attrsx = attrs0(empty=False, sticky=False, source=source, 
-                      text=attrs0.text + " ; " + attrsStr,
+                      text=attrs0.text ++ " ; " ++ attrsStr,
                       classes=[])
 
   val kvs = attrsStr.joinLines.parseAttributes  // join lines here.
@@ -223,24 +223,24 @@ pub fun extendAttrs( attrs0 : attrs, attrsStr : string, source : string ) : attr
     }
     elif (name=="-" || name=="clearnum" || name==".clearnum") then {
       acc( counters=[], label="", replacers=[], 
-           classes=["clearnum"] + acc.classes.filter(fn(nm) { nm != "clearnum" }) )
+           classes=["clearnum"] ++ acc.classes.filter(fn(nm) { nm != "clearnum" }) )
     }
     elif (start=="#") then {
-      //trace("attrs name: " + name + ": " + value.show)
+      //trace("attrs name: " ++ name ++ ": " ++ value.show)
       acc(name = name.substr(1).definitionId, label = if (value!="") then value else acc.label)
     }  
     elif (start==".") then {
       val cname = name.substr(1)
       if (acc.classes.any( fn(nm) { nm == cname } )) 
-       then acc else acc(classes = acc.classes + [cname])
+       then acc else acc(classes = acc.classes ++ [cname])
     }
     elif (start=="r") then {
-      //trace("counter: " + name + ": " + value)
-      acc(counters = acc.counters + [(name.substr(1), value)] )
+      //trace("counter: " ++ name ++ ": " ++ value)
+      acc(counters = acc.counters ++ [(name.substr(1), value)] )
     }
     elif (name=="elem") then {
       val ename = value.definitionId
-      acc(elem = ename, classes = [ename] + acc.classes.filter(fn(nm) { nm != ename }) )
+      acc(elem = ename, classes = [ename] ++ acc.classes.filter(fn(nm) { nm != ename }) )
     }
     elif (name=="tex-elem") then {
       acc(texelem = value )
@@ -249,13 +249,13 @@ pub fun extendAttrs( attrs0 : attrs, attrsStr : string, source : string ) : attr
       acc(htmlelem = value )
     }
     elif (name=="id") then {
-      //trace("id: " + value)
+      //trace("id: " ++ value)
       acc(name = value.definitionId )
     }
     elif (name=="class") then {
       val cname = value.definitionId
       if (acc.classes.any( fn(nm) { nm == cname } )) 
-       then acc else acc( classes = acc.classes + [cname] )
+       then acc else acc( classes = acc.classes ++ [cname] )
     }
     elif (name=="label") then {
       acc(label = value)
@@ -272,20 +272,20 @@ pub fun extendAttrs( attrs0 : attrs, attrsStr : string, source : string ) : attr
     elif (name=="line") then {
       match(value.parseInt()) {
         Nothing -> {
-          warning("unrecognized line number: line=" + value )
+          warning("unrecognized line number: line=" ++ value )
           acc
         }
         Just(n) -> acc(lineNo=n)
       }
     }
     elif (name=="replace") then {
-      acc(replacers = acc.replacers + [value])
+      acc(replacers = acc.replacers ++ [value])
     }    
     elif (name=="before") then {
-      acc(replacers = acc.replacers + [value + r"\/&source;"])
+      acc(replacers = acc.replacers ++ [value ++ r"\/&source;"])
     }
     elif (name=="after") then {
-      acc(replacers = acc.replacers + [r"\/&source;" + value])
+      acc(replacers = acc.replacers ++ [r"\/&source;" ++ value])
     }
     elif (name=="input") then {
       val v = kwvalue
@@ -302,7 +302,7 @@ pub fun extendAttrs( attrs0 : attrs, attrsStr : string, source : string ) : attr
               elif (v=="htmlonly") then Markdown(Just(FmtHtml))
               elif (v=="texonly") then Markdown(Just(FmtTex))
               else {
-                warning( "unrecognized input value: " + value)
+                warning( "unrecognized input value: " ++ value)
                 Markdown()
               }         
       acc(input=r)
@@ -311,18 +311,18 @@ pub fun extendAttrs( attrs0 : attrs, attrsStr : string, source : string ) : attr
       acc(tight=value.toBool)
     }
     else {
-      //trace("key " + name + "=" + value)
+      //trace("key " ++ name ++ "=" ++ value)
       val cntrs = if (name=="start") then match (value.trim.parseInt) {
-                    Just(i) -> acc.counters + [(acc.elem + "-li",(i - 1).show)] 
+                    Just(i) -> acc.counters ++ [(acc.elem ++ "-li",(i - 1).show)] 
                     Nothing -> acc.counters
                   }
                   elif (name=="list-style-type" && acc.elem.bool) then {
-                    //trace("list-style-type: r" + acc.elem + "-li=" + value.trim )
-                    acc.counters + [(acc.elem + "-li",value.trim)] 
+                    //trace("list-style-type: @" ++ acc.elem ++ "-li=" ++ value.trim )
+                    acc.counters ++ [(acc.elem ++ "-li",value.trim)] 
                   }
                   else acc.counters
       val extra = [parsePageAlign(name,kwvalue)].concat
-      acc(keyvals = acc.keyvals.filter(fn(kval) { kval.fst != name && extra.all( fn(kvx) { kvx.fst != kval.fst })}) + [(name,value)] + extra, counters = cntrs)
+      acc(keyvals = acc.keyvals.filter(fn(kval) { kval.fst != name && extra.all( fn(kvx) { kvx.fst != kval.fst })}) ++ [(name,value)] ++ extra, counters = cntrs)
     }
   }
   attrs.addClasses(attrs0.classes) // last, so the classes are order for 'elementName'
@@ -330,16 +330,16 @@ pub fun extendAttrs( attrs0 : attrs, attrsStr : string, source : string ) : attr
 
 val rxId      = r#"(?:[\.#][\w\.#@\-:]*|[@\-\w][\w\.#@\-]*)"#
 val rxQuoted  = r#"(?:'(?:[^\n\\']|\\[\s\S])*'|"(?:[^\n\\"]|\\[\s\S])*")"#
-val rxHtmlValue = r"(?:" + rxQuoted + "|" + r#"(?:[^\\"'\s]|\\.)*)"#
-val rxCssValue  = r"(?:" + rxQuoted + "|" + r#"(?:&(?:#[xX]?)?[\w\-]+;|[^\\"'\s;,]|\\.)*)"#
-val rxHtmlVal = r"(?:\s*=\s*(" + rxHtmlValue + r"))"
-val rxCssVal  = r"(?:\s*:\s*(" + rxCssValue + r"(?:(?:\s+|\s*(,\s*)+)" + rxCssValue + r")*))"
-val rxAttr    = regex(r"^(" + rxId + r")(?:" + rxHtmlVal + "|" + rxCssVal + ")?")
+val rxHtmlValue = r"(?:" ++ rxQuoted ++ "|" ++ r#"(?:[^\\"'\s]|\\.)*)"#
+val rxCssValue  = r"(?:" ++ rxQuoted ++ "|" ++ r#"(?:&(?:#[xX]?)?[\w\-]+;|[^\\"'\s;,]|\\.)*)"#
+val rxHtmlVal = r"(?:\s*=\s*(" ++ rxHtmlValue ++ r"))"
+val rxCssVal  = r"(?:\s*:\s*(" ++ rxCssValue ++ r"(?:(?:\s+|\s*(,\s*)+)" ++ rxCssValue ++ r")*))"
+val rxAttr    = regex(r"^(" ++ rxId ++ r")(?:" ++ rxHtmlVal ++ "|" ++ rxCssVal ++ ")?")
 val rxSep     = regex(r"^(\s+(?:;*(?:$|\s+))?|;(?:$|\s+))")
 val rxNoSep   = regex(r"^([^\s;]|;(?!\s))+")
 
 val rxSpaces  = regex(r"\s+")
-val rxNoSpaces= regex(r"\\.|" + rxQuoted)
+val rxNoSpaces= regex(r"\\.|" ++ rxQuoted)
 
 fun parsePageAlign( name :string, value: string ) : list<(string,string)> {
   if (name!="page-align") return []
@@ -362,9 +362,9 @@ fun parseAttributesX( s : string ) : list<(string,string,string)>
 {
   val res = parseAttributesAcc( s, s, [] )  
   /*
-  trace("attributes: " + s + "\n parsed: " + res.map(fn(kvv) {
+  trace("attributes: " ++ s ++ "\n parsed: " ++ res.map(fn(kvv) {
       val (key,_kwvalue,value) = kvv
-      key + ": \"" + value + "\""
+      key ++ ": \"" ++ value ++ "\""
     }).join(";")
   )
   */
@@ -378,11 +378,11 @@ fun parseAttributesAcc( original : string, s : string, acc : list<(string,string
     Nothing -> match(s.find(rxSep)) {
       Nothing -> match(s.find(rxNoSep)) {
         Nothing -> {
-          warning("invalid attribute: " + s + "\n  in: " + original )
+          warning("invalid attribute: " ++ s ++ "\n  in: " ++ original )
           acc.reverse
         }
         Just(cap) -> {
-          warning("invalid attribute: " + cap.matched + "\n  in: " + original )
+          warning("invalid attribute: " ++ cap.matched ++ "\n  in: " ++ original )
           parseAttributesAcc( original, s.substr1(cap.next), acc )
         }
       }
@@ -419,7 +419,7 @@ pub fun transformText( attrs : attrs, txt : string, labels : dict<label>, metada
   if (attrs.empty) then return txt
   attrs.replacers.foldl(txt,fn(cur,repl) {
     val res = repl.applyReplacer(cur,attrs,labels,metadata) 
-    //trace("replacer '" + erepl.substr(0,10) + "': " + cur + " -> " + res)
+    //trace("replacer '" ++ erepl.substr(0,10) ++ "': " ++ cur ++ " -> " ++ res)
     res
   })
 }
@@ -459,15 +459,15 @@ fun applyReplacer( repl : string, txt : string, attrs : attrs, labels : dict<lab
 val rxmapping = regex(r"^//((?:[^\\]|\\.)*)//([gimc]*)$")
 
 
-val rxregex = regex(r"^/(" + rxescaped + r"*)/(" + rxescaped + r"*)/([gimc]*)$")
+val rxregex = regex(r"^/(" ++ rxescaped ++ r"*)/(" ++ rxescaped ++ r"*)/([gimc]*)$")
 val rxescaped = r"(?:[^\\/]|\\.)"
 
 fun evalCondition( cond : string, source : string, attrs : attrs, labels : dict<label>, metadata : dict<string> ) : constant {
   fun lookup(v,display) {
-    String(expandKeys("&" + v + ";", source,attrs,labels,metadata))
+    String(expandKeys("&" ++ v ++ ";", source,attrs,labels,metadata))
   }
   val res = evaluate( cond, fn(e) { evalExpr(e,lookup) }, String(""))
-  // trace("eval condition: " + res.show + ": " + cond)
+  // trace("eval condition: " ++ res.show ++ ": " ++ cond)
   res
 }
 
@@ -493,13 +493,13 @@ fun regexMapping( mapping : string, flags : string, txt : string ) : string
             (ecap.groups[1],ecap.groups[2])
           }
           Nothing -> {
-            warning("illegal mapping: " + entry)  
+            warning("illegal mapping: " ++ entry)  
             (entry,"")
           }
         }
       })
 
-  val rexp = regex( entries.map(fn(e){"(" + e.fst.ungroup + ")"}).join("|"), ignoreCase=flags.contains("i"), multiline=flags.contains("m"))
+  val rexp = regex( entries.map(fn(e){"(" ++ e.fst.ungroup ++ ")"}).join("|"), ignoreCase=flags.contains("i"), multiline=flags.contains("m"))
   val convCase = flags.contains("c")
 
   fun replaceGroups( cap : matched ) {
@@ -541,7 +541,7 @@ fun regexMapping( mapping : string, flags : string, txt : string ) : string
 }
 
 // "?#caption?/././"
-// val rxcond  = regex(r"^/[?](" + rxescaped + r"+)/(" + rxescaped + r"*)/([gim]*)$")
+// val rxcond  = regex(r"^/[?](" ++ rxescaped ++ r"+)/(" ++ rxescaped ++ r"*)/([gim]*)$")
 
 fun regexReplacer( rxText : string, rtxt : string, flags : string, txt : string ) 
 {
@@ -567,7 +567,7 @@ fun regexReplacer( rxText : string, rtxt : string, flags : string, txt : string 
   val gtxt = if (flags.contains("g")) 
               then txt.replaceAll(rexp,replaceGroups) 
               else txt.replace(rexp,replaceGroups)
-  //trace("replace (" + rxText.substr(0,20) + "): '" + txt + "' to '" + gtxt + "'")    
+  //trace("replace (" ++ rxText.substr(0,20) ++ "): '" ++ txt ++ "' to '" ++ gtxt ++ "'")    
   gtxt
 }
 
@@ -604,7 +604,7 @@ pub fun expandKeys( txt : string, metadata : dict<string> ) : string {
 }
 
 pub fun expandKeyName( name : string, labels : dict<label>, metadata : dict<string> ) : string {  
-  expandKeys(peanoN,"&" + name + ";","",attrsNone,labels,metadata)
+  expandKeys(peanoN,"&" ++ name ++ ";","",attrsNone,labels,metadata)
 }
 
 pub fun expandKeys( txt : string, source : string, 
@@ -614,7 +614,7 @@ pub fun expandKeys( txt : string, source : string,
 }
 
 fun expandKeyPattern( name : string, attrs : attrs ) : string {
-  expandKeys(peanoN,"&" + name + ";",attrs.source,attrs,dict(), dict(), ignoreNotFound)
+  expandKeys(peanoN,"&" ++ name ++ ";",attrs.source,attrs,dict(), dict(), ignoreNotFound)
 } 
 
 // expand keys in a string
@@ -665,7 +665,7 @@ fun expandKeys( p0 : peano, txt : string, source : string,
 val rxkey = regex(r"\\&|(?:\\/)?&([\w\-:]*|&);(\\/)?") 
 
 fun keyNotFound( key: string, matched : string ) : string {
-  warning( "undefined key: " + key)
+  warning( "undefined key: " ++ key)
   matched
 }
 

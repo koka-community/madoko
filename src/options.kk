@@ -265,10 +265,10 @@ fun setMeta( opts0 : options, value : string ) : options {
     if (i > 0) then {
       val key = keyval.substr(0,i).trim
       val s   = keyval.substr(i+1).trim
-      opts(metadata = opts.metadata + [(key,s)] )
+      opts(metadata = opts.metadata ++ [(key,s)] )
     }
     else {
-      warning("illegal --meta option: " + value)
+      warning("illegal --meta option: " ++ value)
       opts
     }
   }
@@ -277,7 +277,7 @@ fun setMeta( opts0 : options, value : string ) : options {
 // Parse the options from the command line given some extra arguments (default `""`).
 pub fun parseOptions( version : string, extra : string = "") : io maybe<commandOptions>
 {
-  parseOptionList(version, env/arguments + extra.split(" ").list.filter(fn(s) { s != "" }))
+  parseOptionList(version, env/arguments ++ extra.split(" ").list.filter(fn(s) { s != "" }))
 }
 
 pub fun parseOptionList( version : string, cmdargs  : list<string> ) : io maybe<commandOptions>
@@ -286,11 +286,11 @@ pub fun parseOptionList( version : string, cmdargs  : list<string> ) : io maybe<
   val (options,args,errs) = parse( CommandOptions(options = Options(version=version)), optionsDesc, cmdargs )
 
   if (!(errs.isNil)) then {
-    println( errs.join("\n") + "\n" + fullUsageInfo() )
+    println( errs.join("\n") ++ "\n" ++ fullUsageInfo() )
     Nothing
   }
   elif (options.showVersion) then {
-    println( "Madoko, version " + version + ".")
+    println( "Madoko, version " ++ version ++ ".")
     Nothing
   }
   elif (args.isNil) then {
@@ -304,7 +304,7 @@ pub fun parseOptionList( version : string, cmdargs  : list<string> ) : io maybe<
 
 fun fullUsageInfo() {
   val header = "usage:\n madoko [options] files\n\noptions:"
-  optionsDesc.usageInfo(header) + "\n\nPrefix a flag with 'no-' to negate it. For example '--no-logo'."
+  optionsDesc.usageInfo(header) ++ "\n\nPrefix a flag with 'no-' to negate it. For example '--no-logo'."
 }
 
 // sanitize options
@@ -316,7 +316,7 @@ fun check( cmdOptions : commandOptions ) : io commandOptions
 
 pub fun getDocName( opts : options ) : string {
   match(opts.metadata.find(fn(kv) { kv.fst == "docname" })) {
-    Just(kv) -> kv.snd + ": "
+    Just(kv) -> kv.snd ++ ": "
     Nothing  -> ""
   }
 }
@@ -324,16 +324,16 @@ pub fun getDocName( opts : options ) : string {
 fun cutoff( s : string, n : int ) : string {
   if (n<=1) return s
   s.lines.map(fn(line) {
-    if (line.length >= n) then line.substr(0,n - 1) + "\n" + line.substr(n - 1) else line
+    if (line.length >= n) then line.substr(0,n - 1) ++ "\n" ++ line.substr(n - 1) else line
   }).unlines
 }
 
 pub fun indent( opts : options, s : string, maxLine : int = 78 ) : string {
-  s.cutoff(maxLine).lines.map(fn(line) { "  " + line }).unlines
+  s.cutoff(maxLine).lines.map(fn(line) { "  " ++ line }).unlines
 }
 
 pub fun print( opts :options, msg : string, level : int = 1  ) {
-  if (opts.verbose >= level) then println(opts.indent(opts.getDocName + msg,opts.verboseMaxLine))
+  if (opts.verbose >= level) then println(opts.indent(opts.getDocName ++ msg,opts.verboseMaxLine))
 }
 
 pub fun printErr( opts :options, msg : string, level : int = 0  ) {

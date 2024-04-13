@@ -222,17 +222,17 @@ fun formatInlineAcc( contxt : inlineContext, acc : builder<h>, txt : string,
                           lineNo : int, linePrefix : string ) : st<h> string
 {
   if (txt=="") return acc.build
-  val location  = linePrefix + lineNo.show
+  val location  = linePrefix ++ lineNo.show
   val lineInfo  = if (lineNo <= 0) then "" else contxt.fmtLineInfo( location )
   if (lineNo > 0) then {
-    val texLineInfo = "%mdk-data-line={" + location + "}"
+    val texLineInfo = "%mdk-data-line={" ++ location ++ "}"
     log("math-plain", texLineInfo)
     log("math-full", texLineInfo)
     log("aux", texLineInfo)
     logLocation(location)  // for warnings
   }
   val (s,next,_) = matchRules(contxt.grammar,contxt,txt,id)
-  val newLineNo = if (lineNo <= 0) then 0 else lineNo + txt.substr(0,next).count("\n")
+  val newLineNo = if (lineNo <= 0) then 0 else lineNo ++ txt.substr(0,next).count("\n")
   formatInlineAcc(contxt, acc.append(lineInfo).append(s), txt.substr1(next), newLineNo, linePrefix )  
 }
 
@@ -241,14 +241,14 @@ fun formatInlineAcc( contxt : inlineContext, acc : builder<h>, txt : string,
 pub fun mathPreX( txt : string ) : string
 {  
   val ignorearg = r"(?:mbox|begin|end|(?:text|math|varmath)(?:kw|id|rm|sf|tt|up|it|sl|sc|bf|md|lf|normal|bb|cal|scr|bbm|bbmss|bbmtt|ds|frak|swab|goth)?)"
-  txt.replaceAll(regex(r"(\\" + ignorearg + r"{(?:[^\\}]|\\.)*}|\\[a-zA-Z@]+ *|\\[^a-z@])|^( +)|( +)|(\n)",multiline=True), fn(cap) {
+  txt.replaceAll(regex(r"(\\" ++ ignorearg ++ r"{(?:[^\\}]|\\.)*}|\\[a-zA-Z@]+ *|\\[^a-z@])|^( +)|( +)|(\n)",multiline=True), fn(cap) {
         val n = cap.matched.length
-        if (cap.groups.matchedOn(2)) then r"\mdmathindent{" + n.show + "}" 
-        elif (cap.groups.matchedOn(3)) then string(n,'~') // r"\mdMathspace{" + cap.matched.length.show + "}"
+        if (cap.groups.matchedOn(2)) then r"\mdmathindent{" ++ n.show ++ "}" 
+        elif (cap.groups.matchedOn(3)) then string(n,'~') // r"\mdMathspace{" ++ cap.matched.length.show ++ "}"
         elif (cap.groups.matchedOn(4)) then "\\\\\n" // \\mdMathbr{}\n"
         else cap.matched
       })     
-     .replaceAll(regex(r"(\\" + ignorearg + r"{(?:[^\\}]|\\.)*}|\\[a-z@]+(?![a-z@]))|#([a-z][a-z\d]*(?![a-z\d]))|([a-z][a-z\d]*(?![a-z\d]))|@([a-z][a-z\d]*(?![a-z\d]))", ignoreCase=True), fn(cap) {
+     .replaceAll(regex(r"(\\" ++ ignorearg ++ r"{(?:[^\\}]|\\.)*}|\\[a-z@]+(?![a-z@]))|#([a-z][a-z\d]*(?![a-z\d]))|([a-z][a-z\d]*(?![a-z\d]))|@([a-z][a-z\d]*(?![a-z\d]))", ignoreCase=True), fn(cap) {
         val grp = cap.groups.firstMatchedOn
         if (grp==2) then cap.groups[2]
         elif (grp < 2) then cap.matched
@@ -259,17 +259,17 @@ pub fun mathPreX( txt : string ) : string
                                 Just(ccap) -> (ccap.groups[1],ccap.groups[2])
                                 Nothing    -> (captxt,"")
                               }
-          "\\" + cmd + "{" + stem + "}" + (if (digits=="") then "" else "_{" + digits + "}")
+          "\\" ++ cmd ++ "{" ++ stem ++ "}" ++ (if (digits=="") then "" else "_{" ++ digits ++ "}")
         } 
       })
 }
 
 pub fun mathPre( txt : string ) : string {
-  "\\mathpre{" + txt.mathPreX + "}"
+  "\\mathpre{" ++ txt.mathPreX ++ "}"
 }
 
 pub fun mathPreBlock( txt : string) : string
 {
   val pre = mathPreX(txt)
-  "\\begin{mdmathpre}%mdk\n" + pre + "\n\\end{mdmathpre}%mdk\n"     
+  "\\begin{mdmathpre}%mdk\n" ++ pre ++ "\n\\end{mdmathpre}%mdk\n"     
 }

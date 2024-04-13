@@ -26,21 +26,21 @@ pub fun entityToTex( entity : string ) : string
 {
   if (entity.startsWith("#")) then {
     val num = if (entity.startsWith("#x") || entity.startsWith("#X")) 
-           then "0" + entity.substr(1)
+           then "0" ++ entity.substr(1)
            else entity.substr(1)
     val i = num.parseInt.maybe(~1,id)
     match (entities.find(fn(e) { e.ecode == i })) {
       Nothing -> {
-        if (i > 127) then warning( "unknown unicode point: &#" + num + ";", "texwarning")
-        r"\mdUnicode{" + i.show + "}"
+        if (i > 127) then warning( "unknown unicode point: &#" ++ num ++ ";", "texwarning")
+        r"\mdUnicode{" ++ i.show ++ "}"
       }
       Just(e) -> e.entityCmd
     }       
   }
   else match(entities.find(fn(e) { e.ename == entity })) {
     Nothing -> {
-      warning( "unknown entity: &" + entity + ";", "texwarning")
-      r"\mdEntity{" + entity + "}"
+      warning( "unknown entity: &" ++ entity ++ ";", "texwarning")
+      r"\mdEntity{" ++ entity ++ "}"
     }
     Just(e) -> e.entityCmd
   }
@@ -51,7 +51,7 @@ pub fun entityToNum( entity : string ) : maybe<int>
 {
   if (entity.startsWith("#")) then {
     val num = if (entity.startsWith("#x") || entity.startsWith("#X")) 
-           then "0" + entity.substr(1)
+           then "0" ++ entity.substr(1)
            else entity.substr(1)
     num.parseInt
   }
@@ -68,7 +68,7 @@ pub fun entityNameAsNum( name : string ) : maybe<string>
   elif (name=="null") then Just("")
   else match(entities.find(fn(e) { e.ename == name })) {
     Nothing -> Nothing
-    Just(e) -> Just("&#" + e.ecode.show + ";")
+    Just(e) -> Just("&#" ++ e.ecode.show ++ ";")
   }  
 }
 
@@ -77,8 +77,8 @@ pub fun entityNameToNum( name : string ) : string
   match(name.entityNameAsNum) {
     Just(e) -> e
     Nothing -> {
-      warning( "unknown entity name: &" + name + ";")
-      r"&" + name + ";"
+      warning( "unknown entity name: &" ++ name ++ ";")
+      r"&" ++ name ++ ";"
     }
   }
 }
@@ -86,10 +86,10 @@ pub fun entityNameToNum( name : string ) : string
 fun entityCmd( entity : entity ) : string {
   val cmd = entity.ecmd
   if (entity.emath) 
-   then r"\ensuremath{" + cmd + "}"
+   then r"\ensuremath{" ++ cmd ++ "}"
   elif (cmd.contains(rxSafeEnd))
    then cmd
-   else cmd + "{}"
+   else cmd ++ "{}"
 }
 val rxSafeEnd = regex(r"[^A-Za-z@]$")
 
@@ -97,7 +97,7 @@ val rxSafeEnd = regex(r"[^A-Za-z@]$")
 pub fun texCmdToEntity( cmd : string ) : string {
   match (entities.find( fn(e) { e.ecmd == cmd } )) {
     Nothing -> ""
-    Just(e) -> "&" + e.ename + ";"
+    Just(e) -> "&" ++ e.ename ++ ";"
   }
 }
 
@@ -107,7 +107,7 @@ pub fun logEntities() {
   log("entities", r#"{"name": "null", "value":"&null;"}"# )
   log("entities", r#"{"name": "&", "value":"&&;", "code":38}"# )
   entities.foreach fn(ent) {
-    log("entities", "{\"name\":" + ent.ename.json + ",\"value\":" + ("&" + ent.ename + ";").json + ",\"code\":" + ent.ecode.show + "}" );
+    log("entities", "{\"name\":" ++ ent.ename.json ++ ",\"value\":" ++ ("&" ++ ent.ename ++ ";").json ++ ",\"code\":" ++ ent.ecode.show ++ "}" );
   }
 }
 
