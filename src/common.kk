@@ -10,11 +10,20 @@
 module common
 
 import std/text/regex
-import std/data/dict
+import std/core/unsafe
 import std/os/path
+pub import std/data/linearmap
+
+pub fun log(name: string , msg: string) : ()
+  trace(name ++ ": " ++ msg)
+
+pub fun regexAlt( rxs : list<string> ) : regex
+  regex( rxs.map(fn(r) { "(" ++ r ++ ")" }).join("|") )
+
+alias mdict<i> = linearMap<string, i>
 
 // Warning messages get logged
-pub fun warning( message : string, logname : string = "warning" ) : () {
+pub fun warning( message : string, logname: string = "warning" ) : () {
   log(logname,"  warning: " ++ message)
 }
 
@@ -46,7 +55,7 @@ pub fun json(s : string) : string {
     elif (c=='"') then "\\\""
     elif (c=='\\') then "\\\\"
     elif (c >= ' ' && c <= '~') then c.string
-    else "\\u" ++ c.int.showHex(4)
+    else "\\u" ++ c.int.hex/show(4)
   }
   return "\"" ++ cs.join ++ "\""
 }
@@ -62,7 +71,7 @@ pub fun json(s : string) : string {
 pub struct rule<a,c>( 
   name : string, 
   regex : regex, 
-  action : (cap : matched, contxt : c) -> a ) 
+  action : (cap: list<string>, contxt : c) -> a ) 
 
 pub alias grammar<a,c> = list<rule<a,c>>
 
@@ -88,9 +97,10 @@ pub fun combineRules( rules : list<rule<a,c>> ) : rule<a,c> {
   val (rxs,lactions) = rules.map( fn(rule) { (rule.regex.source, rule.action) }).unzip
   val actions = lactions.vector
   val rx = regexAlt(rxs)
-  Rule("<combined>",rx,fn(cap : matched, contxt) {
-    val i = max(0,cap.groups.alternative)
-    unsafeTotal{ actions[i](cap,contxt) }
+  Rule("<combined>",rx,fn(cap, contxt) {
+    val i = 0;
+    // val i = max(0,cap.groups.alternative)
+    unsafe-total{actions[i](cap,contxt)}
   })
 }
 
@@ -128,7 +138,7 @@ pub fun matchRules( rules : grammar<a,c>, contxt : c, src : string, def : string
 }
 
 // This is just for statistics
-val ruleHist : mdict<global,int> = unsafeTotal{ mdict() }
+val ruleHist : mdict<int> = unsafeTotal{ mdict() }
 
 fun ruleInc( rule : string ) : () {
   unsafeTotal {
@@ -213,7 +223,7 @@ pub type citemode {
   Auto
 }
 
-pub fun show( cm : citemode) : string {
+pub fun citemode/show( cm : citemode) : string {
   match(cm) {
     Numeric -> "numeric"
     Natural -> "natural"
@@ -223,8 +233,8 @@ pub fun show( cm : citemode) : string {
   }
 }
 
-pub fun show( cs : citestyle ) : string {
-  cs.mode.show ++ ":" ++ (if (cs.sort) then "sort" else "nosort") ++ ":" +
+pub fun citestyle/show( cs : citestyle ) : string {
+  cs.mode.show ++ ":" ++ (if (cs.sort) then "sort" else "nosort") ++ ":" ++
    [cs.open,cs.close,cs.citesep,cs.aysep,cs.yysep].map(show).join(",")
 }
 
@@ -298,7 +308,7 @@ pub struct link( href : string, title : string = "", linkattrs : attrs = attrsNo
 // A definition identifier is always lower case and sequences of spaces are replaced by a single space.
 // Used for links for example.
 pub fun definitionId( s : string ) : string {
-  s.replaceAll(rxspaces," ").toLower    
+  s.replace-all(rxspaces," ").to-lower    
 }
 val rxspaces = regex(r"\s+")
 
@@ -314,12 +324,12 @@ pub fun newLink( href : string, title : string = "", linkattrs : attrs = attrsNo
 pub struct mathinfo (
   imageName : string, // name of the image
   page      : int,    // dvi/pdf rendering page (used for caching)
-  height    : double, // total height in pt (72.27pt = 1inch) (might be scaled already)
-  width     : double, // width in pt
-  depth     : double, // depth in pt (relative to baseline)
-  iheight   : double, // the image native height in pt
-  iwidth    : double, // the image native width in pt
-  bboxFuzz  : double, // bbox margin in pt
+  height    : float64, // total height in pt (72.27pt = 1inch) (might be scaled already)
+  width     : float64, // width in pt
+  depth     : float64, // depth in pt (relative to baseline)
+  iheight   : float64, // the image native height in pt
+  iwidth    : float64, // the image native width in pt
+  bboxFuzz  : float64, // bbox margin in pt
   size      : int,    // length of the image data
   imageData : string, // data-url encoding or ""
   originalData: string // the `imageData` may be compressed due to svg-path sharing; this was the original full image
@@ -358,7 +368,7 @@ pub type mathkind {
   Full
 }
 
-pub fun show( m : mathkind ) : string {
+pub fun mathkind/show( m : mathkind ) : string {
   match(m) {
     Plain -> "plain"
     Full  -> "full"
@@ -406,8 +416,8 @@ pub type formatter {
 
 pub fun (==)( x : formatter, y : formatter ) : bool {
   match(x) {
-    FmtHtml -> y.isFmtHtml
-    FmtTex  -> y.isFmtTex
+    FmtHtml -> y.is-FmtHtml
+    FmtTex  -> y.is-FmtTex
   }
 }
 
@@ -443,7 +453,7 @@ pub fun showFormatter( f : formatter ) {
 // A label is created for every element with an id.
 pub struct label( element : string, labelText : string, labelCaption : string, labelAttrs : attrs = attrsNone )
 
-pub fun show( attrs : attrs ) : string {
+pub fun attrs/show( attrs : attrs ) : string {
   "{" ++ attrs.text ++ "}"
 }
 
@@ -665,3 +675,6 @@ pub fun trimLines( s : string ) : string {
   s.replaceAll(rxTrimLines,"")
 }
 val rxTrimLines = regex(r"^([ \t\r]*\n)+|([ \t\r]*\n)+$")
+
+fun main()
+  "".println

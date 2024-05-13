@@ -10,7 +10,6 @@
 module attributes
 
 import std/text/regex
-import std/data/dict
 import common
 import entity
 import expression

@@ -11,7 +11,6 @@ module bibliography
 
 import std/text/regex
 import std/os/path
-import std/data/dict
 import common
 import options
 import storage
