@@ -9,12 +9,12 @@
 // Formatting of CSS values in LaTex
 module cssFormatter
 
-import std/data/dict
+import dict
 import std/text/regex
 import common
 
 
-pub fun cssIsBlock( kvs : dict<string> ) : bool {
+pub fun cssIsBlock( kvs : dict<string> ) : exn bool {
   match (kvs["display"]) {
     Nothing -> False
     Just(value) -> {
@@ -24,7 +24,7 @@ pub fun cssIsBlock( kvs : dict<string> ) : bool {
   }
 }
 
-pub fun cssIsInlineBlock( kvs : dict<string> ) : bool {
+pub fun cssIsInlineBlock( kvs : dict<string> ) : exn bool {
   match (kvs["display"]) {
     Nothing -> False
     Just(value) -> {
@@ -35,7 +35,7 @@ pub fun cssIsInlineBlock( kvs : dict<string> ) : bool {
 }
 
 // Expand keys that stand for multiple keys; i.e. `margin` is a shorthand for `margin-(top|right|bottom|left)`.
-pub fun cssExpandKeys( kvs0 : dict<string> ) : dict<string> {
+pub fun cssExpandKeys( kvs0 : dict<string> ) : exn dict<string> {
   val kvs = kvs0.cssExpandMultiKeys
   val xs = [
     kvs.cssExpandTRBL("margin"),
@@ -48,7 +48,7 @@ pub fun cssExpandKeys( kvs0 : dict<string> ) : dict<string> {
   xs.dict ++ kvs 
 }
 
-fun cssExpandTRBL( kvs : dict<string>, key : string  ) : list<(string,string)> {
+fun cssExpandTRBL( kvs : dict<string>, key : string  ) : exn list<(string,string)> {
   val i = key.lastIndexOf('-')
   val (pre,post) = if (i < 0) then (key,"") else (key.substr(0,i),key.substr(i))
   match(kvs[key]) {
@@ -72,7 +72,7 @@ fun cssExpandTRBL( kvs : dict<string>, key : string  ) : list<(string,string)> {
 
 
 // Expand keys that define multiple values at once; ie. border may have `border-(width|color|style)` values.
-fun cssExpandMultiKeys( kvs : dict<string> ) : dict<string> {
+fun cssExpandMultiKeys( kvs : dict<string> ) : exn dict<string> {
   val xss = [
     kvs.cssExpandBorder,
     kvs.cssExpandBorder("-top"),
@@ -83,7 +83,7 @@ fun cssExpandMultiKeys( kvs : dict<string> ) : dict<string> {
   xss.concat.dict ++ kvs
 }
 
-fun cssExpandBorder( kvs : dict<string>, post = "" ) : list<(string,string)> {
+fun cssExpandBorder( kvs : dict<string>, post = "" ) : exn list<(string,string)> {
   match(kvs["border" ++ post]) {
     Nothing -> []
     Just(value) -> {
@@ -105,14 +105,14 @@ val rxNum = regex(regNum)
 val rxLen = regex(regNum ++ r"(em|ex|ch|rem|vh|vw|vmin|vmax|px|mm|cm|in|pt|pc)\b")
 
 
-fun cssIsColor( term : string ) : bool {
+fun cssIsColor( term : string ) : exn bool {
   term.contains(rxRgbX) || term.contains(rxRgb) || term.contains(rxHsl) || cssNamedColors.containsKey(term.cssNormalize.toLower)
 }
 
 
 // Split multiple CSS values that can be separated by spaces (like `margin`)
-pub fun cssSplitValues( s : string ) : list<string> {
-  s.findAll(rxCssTerm).list.map(fn(cap) { cap.matched.cssNormalize })
+pub fun cssSplitValues( s : string ) : exn list<string> {
+  s.findAll(rxCssTerm).map(fn(matched) { matched.cssNormalize })
 }
 
 val rxEsc   = r"\\(?:[0-9a-fA-F]{1,6}\s*|.)"
@@ -120,7 +120,7 @@ val rxCssTerm = regex(r"(?:'(?:[^\n\\']|" ++ rxEsc ++ r#")*'|"(?:[^\n\\"]|"# ++ 
 
 // Split comma seperated CSS values (like `font-family`)
 pub fun cssSplitList( s : string ) : list<string> {
-  s.findAll(rxCssListTerm).list.map(fn(cap) { cap.matched.unquote })
+  s.findAll(rxCssListTerm).map(fn(matched) { matched.unquote })
 }
 val rxCssListTerm = regex(r"(?:'(?:[^\n\\']|" ++ rxEsc ++ r#")*'|"(?:[^\n\\"]|"# ++ rxEsc ++ r#")*"|[\-a-zA-Z_/](?:[\w\-\t \.\@/]|"# ++ rxEsc ++ r")*)")
 
@@ -136,32 +136,32 @@ pub fun braced( s : string ) : string {
 val rxEndComment = regex(r"(^|[^\\])%.*$")
 
 pub fun isBraced( s : string ) : bool {
-  s.startsWith("{") && (s.indexOf("}") == s.length - 1)
+  s.startsWith("{") && (s.list.index-of(fn(c) c == '}') == s.count - 1)
 }
 
-pub fun cssColorCmd( v : string ) : string {
+pub fun cssColorCmd( v : string ) : exn string {
   if (v=="") then "" else "\\mdcolor{" ++ v.cssColor ++ "}"
 }
 
-pub fun cssColorArg( v : string ) : string {
+pub fun cssColorArg( v : string ) : exn string {
   if (v=="") then "{}" else "{" ++ v.cssColor ++ "}"
 }
 
-pub fun cssColor( v0 : string ) : string {
+pub fun cssColor( v0 : string ) : exn string {
   val v = v0.cssNormalize.toLower
-  match(v.find(rxRgbX)) {
+  match(v.str/find(rxRgbX)) {
     Just(cap) -> {
       val rgbx = (1,2,3).map( fn(i) { if (cap.groups[4]=="") then cap.groups[i] ++ cap.groups[i] else cap.matched.substr(1 + 2*(i - 1), 2) } )
-      val rgb  = rgbx.map( fn(s) { s.parseIntDefault(0,hex=True) } )
+      val rgb  = rgbx.map( fn(s) { s.parseIntDefault(0) } )
       cssRgb(rgb)
     }
-    Nothing -> match(v.find(rxRgb)) {
+    Nothing -> match(v.str/find(rxRgb)) {
       Just(cap) -> {
         val rgb0 = (cap.groups[1],cap.groups[3],cap.groups[4]).map( fn(c) { c.parseIntDefault(0) } )
         val rgb = if (cap.groups[2]=="%") then rgb0.map( fn(p) { (p.double * 2.55).int } ) else rgb0
         cssRgb(rgb)
       }
-      Nothing -> match(v.find(rxHsl)) {
+      Nothing -> match(v.str/find(rxHsl)) {
         Just(cap) -> {
           val rgb = hslToRgb( cap.groups[1].parseIntDefault(0), cap.groups[2].parseIntDefault(0), cap.groups[3].parseIntDefault(0) )
           cssRgb(rgb)
@@ -183,7 +183,7 @@ pub fun cssColor( v0 : string ) : string {
 
 fun cssRgb(rgb : (int,int,int) ) : string {
   fun hex(i) {
-    i.min(255).max(0).showHex(2)
+    i.min(255).max(0).show-hex(2)
   }
   val (r,g,b) = rgb
   if (r==0 && g==0 && b==0) then "black"
@@ -206,53 +206,53 @@ fun cssRgb(rgb : (int,int,int) ) : string {
   */
 }
 
-pub fun cssBool( v0 : string ) : string {
+pub fun cssBool( v0 : string ) : exn string {
   val v = v0.cssNormalize.toLower
   if (v=="true" || v=="1") then "true" else "false"
 }
 
-pub fun cssFontLength( v : string ) : string {
+pub fun cssFontLength( v : string ) : exn string {
   cssWidth(v,"","font", "em")
 }
 
-pub fun cssPercentage( v0 : string ) : string {
+pub fun cssPercentage( v0 : string ) : exn string {
   val v = v0.cssValue
   if (v.endsWith("%")) then {
-    match(v.substr(0,v.length - 1).parseInt) {
+    match(v.substr(0,v.length - 1).parseInt) { 
       Nothing -> {
         warning("illegal percentage: " ++ v)
         v
       }
       Just(i) -> {
-        (i/100).show ++ "." ++ (i%100).show.fill(2,'0')
+        (i/100).show ++ "." ++ (i%100).show.pad-right(2,'0')
       }
     }
   }
   else v  // keep as is..
 }
 
-pub fun cssHeight( v : string, auto : string = "" ) : string {
+pub fun cssHeight( v : string, auto : string = "" ) : exn string {
   cssWidth(v,auto,"height", "px")
 }
 
-pub fun cssWidth( v0 : string, auto : string = "", percOf : string = "width", defunit = "px" ) : string {
+pub fun cssWidth( v0 : string, auto : string = "", percOf : string = "width", defunit = "px" ) : exn string {
   val v = v0.cssNormalize.toLower
-  match(v.find(rxPerc)) {
+  match(v.str/find(rxPerc)) {
     Just(cap) -> {
-      val perc = cap.groups[1].parseInt().maybe(100,id).double / 100.0
-      "\\dim" ++ percOf ++ perc.showFixed(2).braced
+      val perc = cap.groups[1].parse-int().maybe(100,id).double / 100.0
+      "\\dim" ++ percOf ++ perc.show-fixed(2).braced
     }
-    Nothing -> match(v.find(rxLen)) {
+    Nothing -> match(v.str/find(rxLen)) {
       Just(cap) -> {
         if (cssUnits.containsKey(cap.groups[2])) 
          then "\\dim" ++ cap.groups[2] ++ cap.groups[1].braced
          else cssValue(v)
       }
-      Nothing -> match(v.find(rxNum)) {
+      Nothing -> match(v.str/find(rxNum)) {
         Just -> {
           if (cssUnits.containsKey(defunit))
            then "\\dim" ++ defunit ++ cssValue(v).braced
-           else cssValue(v) + defunit
+           else cssValue(v) ++ defunit
         }
         Nothing -> 
           if (v=="auto") then auto 
@@ -267,20 +267,21 @@ pub fun cssWidth( v0 : string, auto : string = "", percOf : string = "width", de
 
 
 
-pub fun cssValue( v : string ) : string {
+pub fun cssValue( v : string ) : exn string {
   v.cssNormalize
 }
 
-fun cssNormalize( v : string ) : string {
-  v.trim.replaceAll(rxCssEscape, fn(cap) {
-    if (cap.groups[2].bool) then {
-      val i = parseIntDefault(cap.groups[2],default=32,hex=True)
-      string(1,i.char)
+fun cssNormalize( v : string ) : exn string {
+  v.trim.replace-all(rxCssEscape, fn(groups: list<sslice>) {
+    if (!(groups[2].unjust.is-empty)) then {
+      val i = parse-int(groups[2].unjust.string)
+      // string(1, i.unjust) // TODO:
+      ""
     }
     else {
-      cap.groups[1]
+      groups[1].unjust.string
     }
-  }).replaceAll(rxCssIgnore,"")
+  }).replace-all(rxCssIgnore,"")
 }
 val rxCssEscape = regex(r"\\(?:([a-fA-F0-9]{1,6})\s?|([^\r\n\fa-fA-F0-9]))")
 val rxCssIgnore = regex(r"\s*!important$")
@@ -293,9 +294,9 @@ val rxRgb = regex(r"^\s*rgba?\((\d+)(%)?,(\d+)%?,(\d+)%?(?:,\d+%?)?\)\s*$")
 val rxHsl = regex(r"^\s*hsla?\((\d+),(\d+)%?,(\d+)%?(?:,\d+%?)?\)\s*$")
 
 fun hslToRgb(hi, si, li){
-  val h = (hi%360).double / 360.0;
-  val s = si.double * 0.01;
-  val l = li.double * 0.01;
+  val h = (hi%360).float64 / 360.0;
+  val s = si.float64/float64 * 0.01;
+  val l = li.float64/float64 * 0.01;
 
   if (s==0.0) then {
     val x = (l*255.0).int

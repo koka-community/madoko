@@ -15,6 +15,7 @@ module storage
 
 import std/os/path
 import std/text/regex
+import std/core/unsafe
 
 extern import {
   cs file "storage-inline.cs"

@@ -10,8 +10,7 @@
 module entity
 
 import common  // warning
-import std/log
-import std/regex
+import std/text/regex
 
 struct entity(
   ename : string,

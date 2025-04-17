@@ -12,15 +12,23 @@ module common
 import std/text/regex
 import std/core/unsafe
 import std/os/path
-pub import std/data/linearmap
+pub import std/num/float64
+pub import dict
+pub import regex
 
 pub fun log(name: string , msg: string) : ()
   trace(name ++ ": " ++ msg)
 
-pub fun regexAlt( rxs : list<string> ) : regex
-  regex( rxs.map(fn(r) { "(" ++ r ++ ")" }).join("|") )
+pub fun double(d: int): float64
+  d.float64
 
-alias mdict<i> = linearMap<string, i>
+pub fun parseIntDefault(str: string, i: int): int
+  str.parse-int(True).default(i)
+
+pub fun parseInt(s: string)
+  s.parse-int()
+
+pub val toLower = to-lower
 
 // Warning messages get logged
 pub fun warning( message : string, logname: string = "warning" ) : () {
@@ -55,7 +63,7 @@ pub fun json(s : string) : string {
     elif (c=='"') then "\\\""
     elif (c=='\\') then "\\\\"
     elif (c >= ' ' && c <= '~') then c.string
-    else "\\u" ++ c.int.hex/show(4)
+    else "\\u" ++ c.int.show-hex(4)
   }
   return "\"" ++ cs.join ++ "\""
 }
@@ -71,7 +79,7 @@ pub fun json(s : string) : string {
 pub struct rule<a,c>( 
   name : string, 
   regex : regex, 
-  action : (cap: list<string>, contxt : c) -> a ) 
+  action : (cap: matched, contxt : c) -> a ) 
 
 pub alias grammar<a,c> = list<rule<a,c>>
 
@@ -93,13 +101,13 @@ pub fun ruleRemove( grammar : grammar<a,c>, pred : bool, names : list<string> ) 
 
 // Combine rules into one regular expression. 
 // For inline expressions, this does not improve the performance much.
-pub fun combineRules( rules : list<rule<a,c>> ) : rule<a,c> {
+pub fun combineRules( rules : list<rule<a,c>> ) : exn rule<a,c> {
   val (rxs,lactions) = rules.map( fn(rule) { (rule.regex.source, rule.action) }).unzip
   val actions = lactions.vector
   val rx = regexAlt(rxs)
   Rule("<combined>",rx,fn(cap, contxt) {
-    val i = 0;
     // val i = max(0,cap.groups.alternative)
+    val i = 0; // TODO: Tim this is broken
     unsafe-total{actions[i](cap,contxt)}
   })
 }
@@ -112,7 +120,7 @@ pub fun combineRules( rules : list<rule<a,c>> ) : rule<a,c> {
 // Generic rule matcher: takes a list of rules and applies the action that matches
 // on the given "src". Returns the result of the action and the string following the
 // match.
-pub fun matchRules( rules : grammar<a,c>, contxt : c, src : string, def : string -> a ) : (a,int,string)
+pub fun matchRules( rules : grammar<a,c>, contxt : c, src : string, def : string -> a ) : exn (a,int,string)
 {  
   match(rules) {
     Nil -> {
@@ -121,7 +129,7 @@ pub fun matchRules( rules : grammar<a,c>, contxt : c, src : string, def : string
       (def(matched), 1, matched) //src.substr(1))
     }
     Cons(rule,rulesNext) -> {
-      match (src.find(rule.regex)) {
+      match (src.str/find(rule.regex)) {
         Just(cap) -> {
           //if (rule.name[0] != '.') then trace("match: " ++ rule.name.fill(12) ++ ": " ++ cap.matched.show )
           // Uncomment the next line to get a histogram of rule matches
@@ -138,22 +146,19 @@ pub fun matchRules( rules : grammar<a,c>, contxt : c, src : string, def : string
 }
 
 // This is just for statistics
-val ruleHist : mdict<int> = unsafeTotal{ mdict() }
+val ruleHist : mdict<int> = unsafe-total{ref(LinearMap([]))}
 
-fun ruleInc( rule : string ) : () {
-  unsafeTotal {
-    match(ruleHist[rule]) {
-      Nothing -> ruleHist[rule] := 0
-      Just(i) -> ruleHist[rule] := i+1
-    }
-  } 
-}
+fun ruleInc( rule : string ) : ()
+  unsafe-total
+    match((!ruleHist).lookup(rule))
+      Nothing -> ruleHist := (!ruleHist).set(rule, 0)
+      Just(i) -> ruleHist := (!ruleHist).set(rule, i+1) 
 
 pub fun traceRuleHist() {
-  unsafeTotal {
-    ruleHist.freeze.list.foreach fn(kv) {
+  unsafe-total {
+    (!ruleHist).list.foreach fn(kv) {
       val (rule,i) = kv
-      trace( rule.align(20) ++ ": " ++ i.show)
+      trace( rule.pad-right(20) ++ ": " ++ i.show)
     }
   }
 }
@@ -254,7 +259,7 @@ val citeTextual        = Citestyle(Textual,"(",")","; ",", ",", ")
 val citeSuper          = Citestyle(Super,"","",",",",",",",True,True)
 val citeSqNatural      = Citestyle(Natural,"\\[","\\]","; ",", ",", ")
 
-pub fun parseCiteStyleDef( text : string, def : citestyle = citeNumeric ) : citestyle {
+pub fun parseCiteStyleDef( text : string, def : citestyle = citeNumeric ) : exn citestyle {
   match(parseCiteStyle(text)) {
     Just(cs) -> cs
     Nothing  -> {
@@ -264,8 +269,8 @@ pub fun parseCiteStyleDef( text : string, def : citestyle = citeNumeric ) : cite
   }
 }
 
-pub fun parseCiteStyle( text : string ) : maybe<citestyle> {
-  match(text.toLower().find(rxCiteSpec)) {
+pub fun parseCiteStyle( text : string ) : exn maybe<citestyle> {
+  match(text.toLower.str/find(rxCiteSpec)) {
     Just(cap) -> {
       val cite = if (cap.groups[1]=="natural") then citeNatural
                  elif (cap.groups[1]=="sqnatural") then citeSqNatural
@@ -379,12 +384,13 @@ pub fun mathkind/show( m : mathkind ) : string {
 /* --------------------------------------
  Expand list style patterns
 ---------------------------------------- */
-pub fun expandChoices( s : string ) : list<string> {
-  match (s.find(rxChoicePattern)) {
+pub fun expandChoices( s : string ) : exn list<string> {
+  match (s.str/find(rxChoicePattern)) {
     Just(cap) -> { 
-      val pre = s.substr(0,cap.index) 
+      val pre = s.substr(0,cap.index)
       val post = s.substr(cap.next)
-      cap.groups[1].split(",").list.map fn(part) { pre ++ part ++ post }
+      cap.groups[1].split(",").map fn(part) { pre ++ part ++ post }
+      []
     }
     Nothing -> [s]
   }
@@ -395,11 +401,11 @@ val rxChoicePattern = regex( r"\[(\w+(?:,\w+)*)\]" )
 pub fun pickExtension( exts : list<string>, paths : list<string> ) : string {
   match(paths) {
     Nil -> ""
-    Cons(path,Nil) -> path
-    Cons(path,rest) -> {
-      val pathext = path.extname.toLower
+    Cons(p,Nil) -> p
+    Cons(p,rest) -> {
+      val pathext = p.path.extname.toLower
       match (exts.find(fn(ext) { pathext == ext })) {
-        Just -> path
+        Just -> p
         Nothing -> exts.pickExtension(rest)
       }
     }
@@ -497,7 +503,7 @@ pub fun addClass( attrs: attrs, cname : string ) : attrs {
 }
 
 pub fun addInputClass( attrs : attrs ) : attrs {
-  if (attrs.input.isMarkdown) then attrs else attrs.addClass("input-" ++ attrs.input.showInput)
+  if (attrs.input.is-markdown) then attrs else attrs.addClass("input-" ++ attrs.input.showInput)
 }
 
 pub fun addKeyvalIfNotEmpty( attrs : attrs, key : string, value : string ) : attrs {
@@ -514,7 +520,7 @@ pub fun addKeyvals( attrs : attrs, kvs : list<(string,string)> ) : attrs {
 
 pub fun addKeyval( attrs : attrs, key : string, value : string ) : attrs {
   attrs(keyvals=attrs.keyvals.filter(fn(kv){ kv.fst != key }) ++ [(key,value)], 
-        text=attrs.text+" ; "+key+": "+value.quote, empty=False)
+        text=attrs.text++" ; "++key++": "++value.quote, empty=False)
 }
 
 pub fun removeKeys( attrs : attrs, keys : list<string> ) : attrs {
@@ -575,7 +581,7 @@ pub val attrsNone = Attrs(empty=True)
 
 // Split semi-colon seperated paths into parts
 pub fun splitPaths( paths : string ) : list<string> {
-  paths.split(";").list.filter(fn(s){ s != ""})
+  paths.split(";").filter(fn(s){ s != ""})
 }
 
 // Join lines that were broken using `\` followed by a newline.
@@ -586,7 +592,7 @@ val rxLineBreak = regex(r"\\\n\r?[ \t]*")
 
 
 
-val mimes = dict([
+val mimes = [
   ("","text/plain"),
   ("mdk","text/plain"),
   ("md","text/plain"),
@@ -614,11 +620,11 @@ val mimes = dict([
   ("eps","image/eps"),
 
   ("pdf","application/pdf"),
-]);
+]
 
 pub fun mimeFromExt( fname : string ) : string {
-  val ext = extname(fname).substr(1).toLower;
-  match(mimes[ext]) {
+  val ext = extname(fname.path).substr(1).toLower;
+  match(mimes.lookup(fn(m) m == ext)) {
     Just(mime) -> mime
     Nothing    -> ""
   }
@@ -652,11 +658,11 @@ pub fun unquote( s : string ) : string {
   else s
 }
 
-pub fun unindent( txt : string ) : string {
-  val lines = txt.lines.list
+pub fun unindent( txt : string ) : exn string {
+  val lines = txt.lines
   val cindent = lines.filter(fn(s) { !s.contains(regex(r"^\s*$")) })
                      .map(fn(s) { 
-    match(s.find(regex(r"^\s*"))) {
+    match(s.str/find(regex(r"^\s*"))) {
       Nothing   -> 0
       Just(cap) -> cap.matched.length
   }}).minimum
