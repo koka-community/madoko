@@ -46,7 +46,7 @@ fun substr(s: string, start: int, end: int = s.count): string
 fun lastIndexOf(s: string, c: char): int
   s.list.last-index-of(c, 0).default(-1)
 
-pub val replaceAll = regex/string/replace-all
+pub val string/replaceAll = regex/string/replace-all
 
 fun list/last-index-of(l: list<char>, c: char, i: int): maybe<int>
   match l

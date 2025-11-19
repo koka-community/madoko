@@ -12,6 +12,7 @@ module expression
 import std/data/dict
 import std/text/regex
 import common
+import std/core-extras
 
 infixl 5 (<*), (*>), (<*>)
 infixl 6 ($>), (<$>)
@@ -38,11 +39,11 @@ pub type constant {
 
 
 
-pub fun evaluate( expr : string, eval : expr -> <exn|e> a, default : a ) : e a {
+pub fun evaluate( expr : string, eval : expr -> pure a, default : a ) : pure a {
   //trace("evaluate: '" ++ expr ++ "'")
-  val mbres = unsafeTotal( fn() { parseExpr(expr) } )
+  val mbres = parseExpr(expr)
   match(mbres) {
-    Just(res) | res.snd.trim.isEmpty -> {
+    Just(res) | res.snd.trim.is-empty -> {
       catch( fn() { eval(res.fst) }, fn(exn) { 
         warning(exn.show)
         default
@@ -55,10 +56,10 @@ pub fun evaluate( expr : string, eval : expr -> <exn|e> a, default : a ) : e a {
   }
 }
 
-pub fun parseAttrSelectors( pat : string ) : list<expr> {
-  val mbres = unsafeTotal( fn() { many(parseAttrSelector())(pat) } )
+pub fun parseAttrSelectors( pat : string ) : pure list<expr> {
+  val mbres = many(parseAttrSelector())(pat)
   match(mbres) {
-    Just(res) | res.snd.trim.isEmpty -> res.fst
+    Just(res) | res.snd.trim.is-empty -> res.fst
     _ -> {
       warning("invalid attribute selector: '" ++ pat ++ "'")
       []
@@ -73,9 +74,9 @@ pub fun evalExpr( expr : expr, lookup : (string,string) -> <exn|e> constant ) : 
     UnOp(op,arg) -> {
       if (op=="not" || op=="!") then Bool( !(evalExpr(arg, lookup).bool) )
       elif (op=="regexp" || op=="regexpi") then Regex( regex(evalExpr(arg,lookup).string, ignoreCase=(op=="regexpi")) )
-      elif (op=="lower") then String( evalExpr(arg,lookup).string.toLower )
-      elif (op=="upper") then String( evalExpr(arg,lookup).string.toUpper )
-      else error("invalid operator: " ++ op)
+      elif (op=="lower") then String( evalExpr(arg,lookup).string.to-lower )
+      elif (op=="upper") then String( evalExpr(arg,lookup).string.to-upper )
+      else throw("invalid operator: " ++ op)
     }
     BinOp(op,arg1,arg2) -> {
       val x1 = evalExpr(arg1,lookup)
@@ -96,10 +97,10 @@ pub fun evalExpr( expr : expr, lookup : (string,string) -> <exn|e> constant ) : 
       elif (op=="~~") then {
         match(x2) {
           Regex(r) -> Bool( x1.string.contains(r) )
-          _        -> error("first argument of '~~' must be a regular expression")
+          _        -> throw("first argument of '~~' must be a regular expression")
         }
       }
-      else error("invalid operator: " ++ op)
+      else throw("invalid operator: " ++ op)
     }
     If(cond,ethen,eelse) -> {
       if (evalExpr(cond,lookup).bool)
@@ -110,7 +111,7 @@ pub fun evalExpr( expr : expr, lookup : (string,string) -> <exn|e> constant ) : 
 }
 
 fun matchWord( s1 : string, s2 : string ) {
-  s2.split(rxSpaces).list.any( fn(w) { s1 == w } )
+  s2.split(rxSpaces).any( fn(w) { s1 == w } ) 
 }
 val rxSpaces = regex(r"\s+")
 
@@ -118,30 +119,30 @@ fun matchSubcode( s1 : string, s2 : string ) {
   (s1 == s2) || (s1.startsWith(s2 ++ "-"))
 }
 
-fun ierr( i1 : int, i2 : int ) : exn a { error("cannot compare integers") }
-fun serr( s1 : string, s2 : string ) : exn a { error("cannot compare strings") }
-fun berr( b1 : bool, b2 : bool ) : exn a { error("cannot compare booleans") }
+fun ierr( i1 : int, i2 : int ) : exn a { throw("cannot compare integers") }
+fun serr( s1 : string, s2 : string ) : exn a { throw("cannot compare strings") }
+fun berr( b1 : bool, b2 : bool ) : exn a { throw("cannot compare booleans") }
 
 fun binop( c1 : constant, c2: constant, op : string, iop : (int,int) -> exn a, sop : (string,string) -> exn a, bop : (bool,bool) -> exn a) : exn a {
   val msg = "comparing values of different types (" ++ op ++ ") on (" ++ c1.show ++ ") and (" ++ c2.show ++ ")"
   match(c1) {
     Int(i1) -> match(c2.cint) {
       Int(i2) -> iop(i1,i2)      
-      _       -> error(msg)
+      _       -> throw(msg)
     }
     String(s1) -> match(c2) {
       String(s2) -> sop(s1,s2)
       Int(i2)    -> match(c1.cint) {
         Int(i1) -> iop(i1,i2)
-        _       -> error(msg)
+        _       -> throw(msg)
       }
-      _          -> error(msg)
+      _          -> throw(msg)
     }
     Bool(b1) -> match(c2) {
       Bool(b2) -> bop(b1,b2)
-      _        -> error(msg)
+      _        -> throw(msg)
     }
-    _ -> error(msg)
+    _ -> throw(msg)
   }
 }
 
@@ -151,13 +152,13 @@ pub fun bool( c : constant ) : exn bool {
     Bool(b)   -> b
     Int(i)    | i==0 || i==1 -> (i==1)
     String(s) -> {
-      val t = s.trim.toLower
+      val t = s.trim.to-lower
       if (t=="true" || t=="1") then True
       elif (t=="false" || t=="0") then False
-      else error("cannot use string a boolean condition: " ++ s.show)
+      else throw("cannot use string a boolean condition: " ++ s.show)
     }
-    Regex(r)  -> error("cannot use regular expression as a boolean condition: /" ++ r.source ++ "/")
-    Null      -> error("cannot use none expression as a boolean condition")
+    Regex(r)  -> throw("cannot use regular expression as a boolean condition: /" ++ r.source ++ "/")
+    Null      -> throw("cannot use none expression as a boolean condition")
   }
 }
 
@@ -181,7 +182,7 @@ pub fun cint( c : constant ) : constant {
   }
 }
 
-pub fun show( expr : expr, outer : bool = True ) : string {
+pub fun expr/show( expr : expr, outer : bool = True ) : string {
   fun parens(s) {
     if (outer) then s else "(" ++ s ++ ")"
   }
@@ -194,7 +195,7 @@ pub fun show( expr : expr, outer : bool = True ) : string {
   }
 }
 
-pub fun show( c : constant ) : string {
+pub fun constant/show( c : constant ) : string {
   match(c) {
     Bool(b)   -> b.show
     Int(i)    -> i.show
@@ -208,7 +209,7 @@ pub fun show( c : constant ) : string {
 // Parse pattern for attribute selectors
 // --------------------------------------------------------------
 
-fun parseAttrSelector() : parser<expr> {
+fun parseAttrSelector() : pure parser<expr> {
   (string(r"\[") *> (fn(s) { parseExpr(s) }) <*> optional(string(r"i\b"),"") <* string(r"\]"))
   .map2( fn(expr,i) {
     if (i!="i") then expr else {
@@ -224,72 +225,82 @@ fun parseAttrSelector() : parser<expr> {
 // Parse Expressions
 // --------------------------------------------------------------
 
-val parseExpr = unsafeTotal(parseIf)
+val parseExpr = 
+  with no-effect-top
+  parseIf()
 
-fun parseIf() : div parser<expr> {
+fun parseIf() : pure parser<expr> {
   ( string(r"@if\b") *> parseBinary() <* string("@then") <*> parseAtom() <*> 
       ( (string(r"@else") *> parseAtom()) || succeed(Const(Null)) ) )
     .map( fn(res) { If(res.fst.fst, res.fst.snd, res.snd) })
   ||
   parseBinary()
 }
-fun parseBinary() : div parser<expr> {
+fun parseBinary() : pure parser<expr> {
   parseUnary() <$ 
-  ( (string(r#"(and\b|or\b|(~~|:|==|!=|>=|<=|>|<|&&|\|\||[~\^\|\$\*]?=)(?=[\s\w/"']))"#) <*> (fn(s) { parseExpr(s) }))
+  ( (string(r#"(and\b|or\b|(~~|:|==|!=|>=|<=|>|<|&&|\|\||[~\^\|\$\*]?=)(?=[\s\w/"']))"#) <*> (fn(s) { parseIf()(s) }))
       .map2( fn(op,arg2) { return fn(arg1) { BinOp(op,arg1,arg2) }} )
    || succeed( id )
   )
 }
 
-fun parseUnary() : div parser<expr> {
+fun parseUnary() : pure parser<expr> {
   (string(r"(!|not\b|regexp\b|lower\b|upper\b)") <*> parseAtom()).map2( fn(f,e) { UnOp(f,e) } ) ||
   parseAtom()
 }
 
-fun parseAtom() : div parser<expr> {
+fun parseAtom() : pure parser<expr> {
   parseModes || parseConst || parseVar || parseRegex ||
-  (string(r"\(") *> (fn(s) { parseExpr(s) }) <* string(r"\)"))
+  (string(r"\(") *> (fn(s) { parseIf()(s) }) <* string(r"\)"))
 }
 
 val parseConst : parser<expr> =
-   (parseBool || parseCInt || parseString).map(fn(c) { Const(c) })
+  with no-effect-top
+  (parseBool || parseCInt || parseString).map(fn(c) { Const(c) })
 
 val parseVar : parser<expr> =
+  with no-effect-top
   string(r"[\w\-]+").map( fn(s) { Var(s.normalizeId, s) } ) ||
   satisfy(r"&([\w\-]+);").map( fn(cap) { Var(cap.groups[1].normalizeId, cap.groups[1])} )
 
 val parseCInt : parser<constant> = 
+  with no-effect-top
   string(r"\d+").map(fn(s) { Int(parseInt(s).maybe(0,id)) } )
 
 val parseBool : parser<constant> = 
+  with no-effect-top
   string(r"true\b").map(fn(s) { Bool(True) } ) 
   ||  string(r"false\b").map(fn(s) { Bool(False) } )
 
 val parseString : parser<constant> = 
+  with no-effect-top
   string(r#"'(?:[^\\']|\\[.\n])*'|"(?:[^\\"]|\\[.\n])*""#).map(fn(s) { String(s.unquote) } )
 
 val parseRegex : parser<expr> = 
+  with no-effect-top
   satisfy(r"/((?:[^\\/\n]|\\.)*)/(i)?").map(fn(cap) { UnOp("regexp" ++ cap.groups[2], Const(String(cap.groups[1]))) })
 
 val parseModes : parser<expr> =
+  with no-effect-top
   (parseMode <*> many(parseMode)).map2 fn(x,xs) {
     xs.foldl(x,fn(a,b) { BinOp("and",a,b) } )
   }
 
 
 val parseMode : parser<expr> =
+  with no-effect-top
   satisfy(r"@(no)?([\w\-]*)").map fn(cap) {
     val v = Var(cap.groups[2].normalizeId, cap.groups[2])
-    if (cap.groups[1].isEmpty) then v else UnOp("not",v)
+    if (cap.groups[1].is-empty) then v else UnOp("not",v)
   }
 
 // --------------------------------------------------------------
 // Parsers
 // --------------------------------------------------------------
 
-alias parser<a> = string -> div maybe<(a,string)>
+alias parser<a> = string -> pure maybe<(a,string)>
 
-fun map( p : parser<a>, f : a -> b ) : parser<b> {
+fun map( p : parser<a>, f : a -> pure b ) : pure parser<b> {
   return fn(s) { 
     match(p(s)) {
       Nothing -> Nothing
@@ -298,28 +309,28 @@ fun map( p : parser<a>, f : a -> b ) : parser<b> {
   }
 }
 
-fun map2( p : parser<(a,b)>, f : (a,b) -> c ) : e parser<c> {
+fun map2( p : parser<(a,b)>, f : (a,b) -> pure c ) : pure parser<c> {
   p.map( fn(x) { f(x.fst, x.snd)}) 
 }
 
 
-fun (<$)( p1 : parser<a>, p2: parser<a -> b> ) : parser<b> {
+fun (<$)( p1 : parser<a>, p2: parser<a -> b> ) : pure parser<b> {
   (p1 <*> p2).map2( fn(x,f) { f(x) } )
 }
 
-fun (*>)( p1 : parser<a>, p2: parser<b> ) : parser<b> {
+fun (*>)( p1 : parser<a>, p2: parser<b> ) : pure parser<b> {
   (p1 <*> p2).map( fn(x) { x.snd } )
 }
 
-fun (<*)( p1 : parser<a>, p2: parser<b> ) : parser<a> {
+fun (<*)( p1 : parser<a>, p2: parser<b> ) : pure parser<a> {
   (p1 <*> p2).map( fn(x) { x.fst } )
 }
 
-fun ($>)( f : a -> b, p : parser<a> ) : parser<b>  {
+fun ($>)( f : a -> b, p : parser<a> ) : pure parser<b>  {
   (succeed(f) <$> p)
 }
 
-fun (<$>)( p1 : parser<a -> b>, p2 : parser<a> ) : parser<b>  {
+fun (<$>)( p1 : parser<a -> b>, p2 : parser<a> ) : pure parser<b>  {
   (p1 <*> p2).map( fn(x) { (x.fst)(x.snd) })
 }
 
@@ -348,15 +359,15 @@ fun (||)( p1 : parser<a>, p2 : parser<a> ) : parser<a> {
   }
 }
 
-fun many1( p : parser<a>) : parser<list<a>> {
+fun many1( p : parser<a>) : pure parser<list<a>> {
   (p <*> many(p)).map2( fn(x,xs) { Cons(x,xs) } )
 }
 
-fun many( p : parser<a> ) : parser<list<a>> {
-  return fn(s) { unsafeTotal(fn() { manyx(p,s) }) }
+fun many( p : parser<a> ) : pure parser<list<a>> {
+  return fn(s) { manyx(p,s) }
 }
 
-fun manyx( p : parser<a>, s : string ) : div maybe<(list<a>,string)> {
+fun manyx( p : parser<a>, s : string ) : pure maybe<(list<a>,string)> {
   match(p(s)) {
     Nothing -> Just(([],s))
     Just(resx) -> {
@@ -371,16 +382,16 @@ fun manyx( p : parser<a>, s : string ) : div maybe<(list<a>,string)> {
   }
 }
 
-fun string( r: string ) : parser<string> {
+fun parse/string( r: string ) : pure parser<string> {
   satisfy("(" ++ r ++ ")").map( fn(cap) { cap.groups[1] })
 }
 
 fun satisfy( r: string ) : parser<matched> {
   return fn(s) {
-    match(s.find(regex(r"^\s*" ++ r, ignoreCase=True))) {
+    match(s.str/find(regex(r"^\s*" ++ r, ignoreCase=True))) {
       Just(cap) -> {
         //trace("satisfy: " ++ cap.matched)
-        Just((cap,s.substr1(cap.next)))
+        Just((cap,s.substr(cap.next)))
       }
       Nothing -> {
         //trace("satisfy fail: /" ++ r ++ "/ on: " ++ s.substr(0,8)) 

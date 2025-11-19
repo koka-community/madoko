@@ -9,7 +9,7 @@
 // Attibute operations: parsing, transform text, expand keys, etc.
 module attributes
 
-import std/text/regex
+import regex
 import common
 import entity
 import expression
@@ -36,9 +36,9 @@ struct pattern(
   weight: int
 )
 
-fun show( p : pattern ) {
+fun pattern/show( p : pattern ) {
   "~" ++ p.elem ++ "#" ++ p.name ++ "." ++  p.classes.join(".") ++
-   p.attrselectors.map(fn(e) { "[" ++ e.expression/show ++ "]" }).join
+   p.attrselectors.map(fn(e) { "[" ++ e.show ++ "]" }).join
 }
 
 fun makePattern( elem : string = "", name : string = "", 
@@ -598,15 +598,15 @@ pub fun expand( attrs : attrs, metadata : dict<string>, labels : dict<label> = d
   })
 }
 
-pub fun expandKeys( txt : string, metadata : dict<string> ) : string {  
-  expandKeys(peanoN,txt,"",attrsNone,dict(),metadata)
+pub fun metadata/expandKeys( txt : string, metadata : dict<string> ) : string {  
+  expandKeys(peanoN,txt,"",attrsNone,dict([]),metadata)
 }
 
 pub fun expandKeyName( name : string, labels : dict<label>, metadata : dict<string> ) : string {  
   expandKeys(peanoN,"&" ++ name ++ ";","",attrsNone,labels,metadata)
 }
 
-pub fun expandKeys( txt : string, source : string, 
+pub fun labels/expandKeys( txt : string, source : string, 
                             attrs : attrs, 
                             labels : dict<label>, metadata : dict<string> ) : string {
   expandKeys(peanoN,txt,source,attrs,labels,metadata)
@@ -617,7 +617,7 @@ fun expandKeyPattern( name : string, attrs : attrs ) : string {
 } 
 
 // expand keys in a string
-fun expandKeys( p0 : peano, txt : string, source : string, 
+fun source/expandKeys( p0 : peano, txt : string, source : string, 
                             attrs : attrs, 
                             labels : dict<label>, metadata : dict<string>, 
                             notFound : (string,string) -> string = keyNotFound ) : string 
@@ -638,14 +638,14 @@ fun expandKeys( p0 : peano, txt : string, source : string,
         else match (attrs.keyvals.find(fn(kv){ kv.fst == key })) {
           Just(kv) -> {
             if (txt == kv.snd) then kv.snd
-             else expandKeys(p,kv.snd,source,attrs,dict(),metadata,notFound)                
+             else expandKeys(p,kv.snd,source,attrs,dict([]),metadata,notFound)                
           }
           Nothing  -> match(labels[key]) {
             Just(label) -> label.labelText // already expanded
             Nothing -> match(metadata[key]) {
               Just(value) -> {
                 // semi-static scoping: clear out labels, but keep attributes
-                expandKeys(p,value,source,attrs,dict(),metadata,notFound)
+                expandKeys(p,value,source,attrs,dict([]),metadata,notFound)
                 // todo? full static scoping: clear out attributes and labels..
                 //expandKeys(p,value,"",attrsNone,dict(),metadata,notFound)              
               }

@@ -5,7 +5,6 @@
 - definitions.kk
 - driver.kk
 - entity.kk
-- expression.kk
 - formatBlock.kk
 - formatInline.kk
 - hilite.kk
@@ -40,7 +39,12 @@ Done:
 - cssFormatter.kk
 - entity.kk
 - version.kk
+- expression.kk
 
 Added:
 regex.kk
 dict.kk
+
+Using: 
+std/core-extras.kk
+std/log.kk
