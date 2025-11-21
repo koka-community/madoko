@@ -109,14 +109,14 @@ fun findCitations( aux : string ) : list<citeinfo> {
 val rxCitation = regex(r"^\\citation\{([^\}]+)\}")
 val rxDataLine = regex(r"^%mdk-data-line=\{([^\}]+)\}")
 
-pub fun genBibtex( runBibtex, auxInfos : list<auxinfo>, outdir, searchDirs, mopts : options, continue : (bool) -> io () ) : io () {
+pub fun genBibtex( runBibtex, auxInfos : list<auxinfo>, outdir, searchDirs, mopts : options, kontinue : (bool) -> io () ) : io () {
   val (csls,bsts) = auxInfos.partition( fn(info) { info.style.isCsl } );
 
   fun continueCsl(biberr) {
     val ok = csls.all fn(aux) {
       genBibCsl( aux, outdir, searchDirs, mopts )
     }
-    continue(biberr || !ok);
+    kontinue(biberr || !ok);
   }
 
   // copy .bst files to the output directory since Bibtex requires that

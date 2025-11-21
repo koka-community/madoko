@@ -16,6 +16,7 @@ import std/os/flags
 import std/text/regex
 import std/os/path
 import common
+import dict
 
 // Metadata is just a string to string map.
 pub alias metadata = list<(string,string)>
@@ -65,7 +66,7 @@ pub struct mathoptions (
   dvips         : string = "dvips",   // used with ps2pdf when mathlatexFull is empty
   ps2pdf        : string = "ps2pdf",
   convert       : string = "convert", // used to extract png's from pdf for math that needs it
-  dim           : dict<mathinfo> = dict()  // static math dimension information
+  dim           : dict<mathinfo> = dict([])  // static math dimension information
 )
 
 
@@ -135,7 +136,7 @@ pub struct options(
   zip           : string = "zip",     // zip program
 
   metadata      : metadata = [],
-  embedinfos    : dict<embedinfo> = dict(),   // embed data, used in a browser
+  embedinfos    : dict<embedinfo> = dict([]),   // embed data, used in a browser
   embedLimit    : int = 512*1024,             // limit for embedding data (javascript, css, etc.)
   lineNo        : int = 1,                  // emit line no's. Use 0 to suppress.
   lineNoWeb     : bool = False,             // emit line no info in html pages.
@@ -145,20 +146,20 @@ pub struct options(
   extractEnd    : string = r"^(?:\/\/|--|[#%]|[<]!--|\(\*) *END *(?:[:] *(\w+) *)?(?:--[>]|\*\))?$"
 );
 
-pub fun getPdfLatex( opts : options ) : string {
-  if (opts.pdflatex.bool) then opts.pdflatex
-   else combine(opts.latex.dirname,"xelatex")
+pub fun getPdfLatex( opts : options ) : path {
+  if (!opts.pdflatex.is-empty) then opts.pdflatex.path
+   else opts.latex.path / "xelatex"
 }
 
-pub fun getMathLatexFull( opts : options ) : string {
-  if (opts.math.latexFull.bool) then opts.math.latexFull
+pub fun getMathLatexFull( opts : options ) : path {
+  if (!opts.math.latexFull.is-empty) then opts.math.latexFull.path
    else opts.getMathLatex
 }
 
-pub fun getMathLatex( opts : options ) : string {
-  if (opts.math.latex != "") then opts.math.latex
+pub fun getMathLatex( opts : options ) : path {
+  if (opts.math.latex != "") then opts.math.latex.path
   // elif (mrender.isPng) then opts.latex // dvi route is much faster for png extraction
-  else opts.latex // was: opts.getPdfLatex, but pdflatex/latex proves more reliable for svg extraction
+  else opts.latex.path // was: opts.getPdfLatex, but pdflatex/latex proves more reliable for svg extraction
 }
 
 pub fun getMathjax( opts : mathoptions ) : string {
@@ -166,14 +167,14 @@ pub fun getMathjax( opts : mathoptions ) : string {
    else "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"
 }
 
-pub fun getMathRender( opts : mathoptions, kind : mathkind ) : mathrender {
+pub fun kind/getMathRender( opts : mathoptions, kind : mathkind ) : mathrender {
   match(kind) {
     Plain -> opts.getMathRender
     Full  -> opts.getMathRenderFull
   }
 }
 
-pub fun getMathRender( opts : mathoptions ) : mathrender {
+pub fun default/getMathRender( opts : mathoptions ) : mathrender {
   match(opts.render) {
     Nothing -> Svg
     Just(m) -> m
@@ -204,22 +205,22 @@ pub struct commandOptions(
   options     : options = Options()
 );
 
-fun creq( f : (commandOptions,string) -> commandOptions, help : string ) : optionArg<commandOptions>
+fun creq( f : (commandOptions,string) -> commandOptions, help : string ) : flag-parser<commandOptions>
 {
   Req(f,help)
 }
 
-fun cflag( f : (commandOptions,bool) -> commandOptions ) : optionArg<commandOptions>
+fun cflag( f : (commandOptions,bool) -> commandOptions ) : flag-parser<commandOptions>
 {
-  Flag(f)
+  Bool(f)
 }
 
-fun oflag( f : (options,bool) -> options ) : optionArg<commandOptions>
-{
-  Flag(fn(co:commandOptions,b:bool) { co(options = f(co.options,b)) })
+fun oflag( f : (options,bool) -> options ) : flag-parser<commandOptions>
+{ 
+  Bool(fn(co:commandOptions,b:bool) { co(options = f(co.options,b)) })
 }
 
-fun oreq( f : (options,string) -> options, help : string ) : optionArg<commandOptions>
+fun oreq( f : (options,string) -> options, help : string ) : flag-parser<commandOptions>
 {
   Req(fn(co:commandOptions,v:string) { co(options = f(co.options,v)) },help)
 }
@@ -233,51 +234,46 @@ fun setbench( o : options, b : bool ) {
   }
 }
 
-val optionsDesc : list<option<commandOptions>>
-  = [ Option( "",  ["version"], cflag(fn(co,v) { co(showVersion = v) }),   "Display version information" ),
-      Option( "v", ["verbose"], oflag(fn(o,v) { o(verbose = if (v) then o.verbose + 1 else 0) }),     "Be more verbose"),
-      Option( "",  ["odir"],    creq(fn(co,s) { co(outputDir=s) },"DIR"), "Write output files to the specified directory" ),
-      Option( "",  ["xmp"],     oflag(fn(o,v) { o(xmp = v) }),       "Only process markdown between <xmp> tags"),
-      Option( "",  ["tex"],     oflag(fn(o,v) { o(tex = v) }),       "Generate a LaTeX file too"),
-      Option( "",  ["pdf"],     oflag(fn(o,v) { o(pdf = v, tex = if (v) then True else o.tex) }),  "Generate PDF using LaTeX"),
-      Option( "",  ["texzip"],  oflag(fn(o,v) { o(texzip = v, tex = if (v) then True else o.tex, pdf = if (v) then True else o.pdf, lineNo = 0) }), "Generate TeX zip for submission"),
-      Option( "",  ["png"],     oflag(fn(o,v) { o(math = (o.math)(render = Just(if (v) then Png else Svg))) }),  "Use PNG instead of SVG for math in HTML"),
-      Option( "",  ["convert-tex"], cflag(fn(co,v) { co(convertTex=v) }), "Convert input from TeX to Markdown"),
+val optionsDesc : list<flag<commandOptions>>
+  = [ Flag( "",  ["version"], cflag(fn(co,v) { co(showVersion = v) }),   "Display version information" ),
+      Flag( "v", ["verbose"], oflag(fn(o,v) { o(verbose = if (v) then o.verbose + 1 else 0) }),     "Be more verbose"),
+      Flag( "",  ["odir"],    creq(fn(co,s) { co(outputDir=s) },"DIR"), "Write output files to the specified directory" ),
+      Flag( "",  ["xmp"],     oflag(fn(o,v) { o(xmp = v) }),       "Only process markdown between <xmp> tags"),
+      Flag( "",  ["tex"],     oflag(fn(o,v) { o(tex = v) }),       "Generate a LaTeX file too"),
+      Flag( "",  ["pdf"],     oflag(fn(o,v) { o(pdf = v, tex = if (v) then True else o.tex) }),  "Generate PDF using LaTeX"),
+      Flag( "",  ["texzip"],  oflag(fn(o,v) { o(texzip = v, tex = if (v) then True else o.tex, pdf = if (v) then True else o.pdf, lineNo = 0) }), "Generate TeX zip for submission"),
+      Flag( "",  ["png"],     oflag(fn(o,v) { o(math = (o.math)(render = Just(if (v) then Png else Svg))) }),  "Use PNG instead of SVG for math in HTML"),
+      Flag( "",  ["convert-tex"], cflag(fn(co,v) { co(convertTex=v) }), "Convert input from TeX to Markdown"),
 
-      Option( "f", ["fragment"], oflag(fn(o,v) { o(full=Just(!v)) }), "Generate a fragment instead of a full document"),
-      Option( "",  ["logo"],     oflag(fn(o,v) { o(logo=v) }),        "Generate a logo at the end of the document" ),
-      Option( "",  ["sanitize"], oflag(fn(o,v) { o(sanitize = v) }), "Always escape or suppress user defined html"),
-      Option( "" , ["sandbox"],  oflag(fn(o,v) { o(sandbox=v) }),    "Run in a sandbox for secure server execution"),
-      Option( "",  ["pedantic"], oflag(fn(o,v) { o(pedantic = v) }), "Pedantic mode"),
-      Option( "",  ["bench"],    oflag(setbench),                     "For benchmarking: turn off numbering, etc."),
-      Option( "",  ["installdir"], creq(fn(co,s) { co(installDir=s) },"DIR"), "Set installation directory explicitly"),
-      Option( "r", ["rebuild"],  oflag(fn(o,v) { o(rebuild=v) }),    "Force rebuild bibliography, math, etc."),
-      Option( "",  ["prelude"],  oreq(fn(o,s) { o(prelude=s) }, "FILE"), "Include <FILE> at start of the document"),
-      Option( "",  ["verbose-max"], oreq(fn(o,s) { o(verboseMaxLine=parseIntDefault(s,78)) }, "LEN"), "Maximum line length for messages" ),
+      Flag( "f", ["fragment"], oflag(fn(o,v) { o(full=Just(!v)) }), "Generate a fragment instead of a full document"),
+      Flag( "",  ["logo"],     oflag(fn(o,v) { o(logo=v) }),        "Generate a logo at the end of the document" ),
+      Flag( "",  ["sanitize"], oflag(fn(o,v) { o(sanitize = v) }), "Always escape or suppress user defined html"),
+      Flag( "" , ["sandbox"],  oflag(fn(o,v) { o(sandbox=v) }),    "Run in a sandbox for secure server execution"),
+      Flag( "",  ["pedantic"], oflag(fn(o,v) { o(pedantic = v) }), "Pedantic mode"),
+      Flag( "",  ["bench"],    oflag(setbench),                     "For benchmarking: turn off numbering, etc."),
+      Flag( "",  ["installdir"], creq(fn(co,s) { co(installDir=s) },"DIR"), "Set installation directory explicitly"),
+      Flag( "r", ["rebuild"],  oflag(fn(o,v) { o(rebuild=v) }),    "Force rebuild bibliography, math, etc."),
+      Flag( "",  ["prelude"],  oreq(fn(o,s) { o(prelude=s) }, "FILE"), "Include <FILE> at start of the document"),
+      Flag( "",  ["verbose-max"], oreq(fn(o,s) { o(verboseMaxLine=parseIntDefault(s,78)) }, "LEN"), "Maximum line length for messages" ),
 
-      Option( "m", ["meta"],     oreq(setMeta, "key:val"), "Semi-colon separated list of metadata values")
+      Flag( "m", ["meta"],     oreq(setMeta, "key:val"), "Semi-colon separated list of metadata values")
     ]
 
 fun setMeta( opts0 : options, value : string ) : options {
-  val keyvals = value.split(";").list
+  val keyvals = value.split(";")
   keyvals.foldl(opts0) fn(opts : options,keyval) {
-    val i = keyval.indexOf(":")
-    if (i > 0) then {
-      val key = keyval.substr(0,i).trim
-      val s   = keyval.substr(i+1).trim
-      opts(metadata = opts.metadata ++ [(key,s)] )
-    }
-    else {
-      warning("illegal --meta option: " ++ value)
-      opts
-    }
+    match keyval.split(":").map(trim)
+      Cons(key, Cons(s, Nil)) -> opts(metadata=opts.metadata ++ [(key,s)])
+      _ -> 
+        warning("illegal --meta option: " ++ value)
+        opts
   }
 }
 
 // Parse the options from the command line given some extra arguments (default `""`).
 pub fun parseOptions( version : string, extra : string = "") : io maybe<commandOptions>
 {
-  parseOptionList(version, env/arguments ++ extra.split(" ").list.filter(fn(s) { s != "" }))
+  parseOptionList(version, get-argv() ++ extra.split(" ").filter(fn(s) { s != "" }))
 }
 
 pub fun parseOptionList( version : string, cmdargs  : list<string> ) : io maybe<commandOptions>
@@ -285,7 +281,7 @@ pub fun parseOptionList( version : string, cmdargs  : list<string> ) : io maybe<
   // testOptions.usageInfo( header ).println
   val (options,args,errs) = parse( CommandOptions(options = Options(version=version)), optionsDesc, cmdargs )
 
-  if (!(errs.isNil)) then {
+  if (!(errs.is-nil)) then {
     println( errs.join("\n") ++ "\n" ++ fullUsageInfo() )
     Nothing
   }
@@ -293,7 +289,7 @@ pub fun parseOptionList( version : string, cmdargs  : list<string> ) : io maybe<
     println( "Madoko, version " ++ version ++ ".")
     Nothing
   }
-  elif (args.isNil) then {
+  elif (args.is-nil) then {
     fullUsageInfo().println
     Nothing
   }
@@ -304,13 +300,13 @@ pub fun parseOptionList( version : string, cmdargs  : list<string> ) : io maybe<
 
 fun fullUsageInfo() {
   val header = "usage:\n madoko [options] files\n\noptions:"
-  optionsDesc.usageInfo(header) ++ "\n\nPrefix a flag with 'no-' to negate it. For example '--no-logo'."
+  optionsDesc.usage(header) ++ "\n\nPrefix a flag with 'no-' to negate it. For example '--no-logo'."
 }
 
 // sanitize options
 fun check( cmdOptions : commandOptions ) : io commandOptions
 {
-  cmdOptions(installDir=if (cmdOptions.installDir=="") then programPath().dirname else cmdOptions.installDir)
+  cmdOptions(installDir=if (cmdOptions.installDir=="") then app-path().dirname else cmdOptions.installDir)
 }
 
 
